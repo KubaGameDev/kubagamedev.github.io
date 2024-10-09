@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Your Album Title</title>
+    <title>Be Good 2 Yourself</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,42 +21,98 @@
         .song-list {
             list-style: none;
             padding: 0;
+            max-width: 600px;
+            margin: 20px auto;
         }
         .song-item {
             margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .song-item h2 {
+            font-size: 1.2em;
+            margin: 0;
         }
         audio {
-            width: 100%;
-            max-width: 600px;
+            width: 60%;
         }
         h1 {
             margin-top: 20px;
             font-size: 2.5em;
         }
+        .platform-links {
+            margin-top: 40px;
+        }
+        .platform-links img {
+            width: 150px;
+            margin: 10px;
+            transition: transform 0.3s ease;
+        }
+        .platform-links img:hover {
+            transform: scale(1.05);
+        }
     </style>
+    <script>
+        // Disable right-click on audio elements to prevent saving the files
+        document.addEventListener('contextmenu', function(e) {
+            if (e.target.nodeName === 'AUDIO') {
+                e.preventDefault();
+            }
+        }, false);
+    </script>
 </head>
 <body>
 
-    <h1>Your Album Title</h1>
-    <img src="path/to/your-album-cover.jpg" alt="Album Cover" class="album-cover">
+    <h1>Be Good 2 Yourself</h1>
+    <img src="images/album-cover.jpg" alt="Album Cover" class="album-cover">
 
     <ul class="song-list">
         <li class="song-item">
-            <h2>Song Title 1</h2>
+            <h2>I Am Enough</h2>
             <audio controls>
-                <source src="path/to/your-song1.mp3" type="audio/mpeg">
+                <source src="songs/01-I-Am-Enough.mp3" type="audio/mpeg">
                 Your browser does not support the audio element.
             </audio>
+            <span>3:35</span>
         </li>
         <li class="song-item">
-            <h2>Song Title 2</h2>
+            <h2>Redemption Time</h2>
             <audio controls>
-                <source src="path/to/your-song2.mp3" type="audio/mpeg">
+                <source src="songs/02-Redemption-Time.mp3" type="audio/mpeg">
                 Your browser does not support the audio element.
             </audio>
+            <span>3:20</span>
         </li>
-        <!-- Repeat the above block for each song -->
+        <li class="song-item">
+            <h2>Reaching Infinity</h2>
+            <audio controls>
+                <source src="songs/03-Reaching-Infinity.mp3" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <span>2:52</span>
+        </li>
+        <!-- Add more song items as needed -->
     </ul>
+
+    <div class="platform-links">
+        <h2>Get the music:</h2>
+        <a href="https://open.spotify.com/artist/your-spotify-id" target="_blank">
+            <img src="images/spotify-banner.png" alt="Spotify">
+        </a>
+        <a href="https://music.apple.com/us/artist/your-apple-id" target="_blank">
+            <img src="images/apple-music-banner.png" alt="Apple Music">
+        </a>
+        <a href="https://www.youtube.com/channel/your-youtube-channel-id" target="_blank">
+            <img src="images/youtube-banner.png" alt="YouTube">
+        </a>
+        <a href="https://music.amazon.com/artists/your-amazon-id" target="_blank">
+            <img src="images/amazon-banner.png" alt="Amazon Music">
+        </a>
+        <a href="https://www.deezer.com/en/artist/your-deezer-id" target="_blank">
+            <img src="images/deezer-banner.png" alt="Deezer">
+        </a>
+    </div>
 
 </body>
 </html>

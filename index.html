@@ -18,157 +18,29 @@
             margin: 20px auto;
             display: block;
         }
-        .song-list {
-            list-style: none;
-            padding: 0;
-            max-width: 600px;
-            margin: 20px auto;
-        }
-        .song-item {
-            margin: 20px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .song-item h2 {
-            font-size: 1.2em;
-            margin: 0;
-        }
-        audio {
-            width: 60%;
-        }
         h1 {
             margin-top: 20px;
             font-size: 2.5em;
         }
-        .platform-links {
-            margin-top: 40px;
+        h2 {
+            margin-top: 10px;
+            font-size: 1.5em;
         }
-        .platform-links img {
-            width: 150px;
-            margin: 10px;
-            transition: transform 0.3s ease;
-        }
-        .platform-links img:hover {
-            transform: scale(1.05);
+        p {
+            font-size: 1.2em;
         }
     </style>
-    <script>
-        // Disable right-click on audio elements to prevent saving the files
-        document.addEventListener('contextmenu', function(e) {
-            if (e.target.nodeName === 'AUDIO') {
-                e.preventDefault();
-            }
-        }, false);
-    </script>
 </head>
 <body>
 
-    <h1>Be Good 2 Yourself</h1>
+    <h1>WELCOME TO JUMPKAT</h1>
+    <h2>we're still preparing before the grand opening!</h2>
+    <p>Check out Kuba's album while you're here :)</p>
+
     <img src="images/album-cover.jpg" alt="Album Cover" class="album-cover">
 
-    <ul class="song-list">
-        <li class="song-item">
-            <h2>I Am Enough</h2>
-            <audio controls>
-                <source src="songs/01-I-Am-Enough.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:35</span>
-        </li>
-        <li class="song-item">
-            <h2>Redemption Time</h2>
-            <audio controls>
-                <source src="songs/02-Redemption-Time.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:20</span>
-        </li>
-        <li class="song-item">
-            <h2>Reaching Infinity</h2>
-            <audio controls>
-                <source src="songs/03-Reaching-Infinity.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>2:52</span>
-        </li>
-        <li class="song-item">
-            <h2>Wobble</h2>
-           <audio controls>
-                <source src="https://drive.google.com/uc?export=download&id=1PbyqKu5DCO7S61488FRN_qRoe2BzRYq2" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:53</span>
-        </li>
-        <li class="song-item">
-            <h2>Vortex</h2>
-            <audio controls>
-                <source src="songs/05-Vortex.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>4:40</span>
-        </li>
-        <li class="song-item">
-            <h2>Get It</h2>
-            <audio controls>
-                <source src="songs/06-Get-It.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>4:19</span>
-        </li>
-        <li class="song-item">
-            <h2>Thank You For</h2>
-            <audio controls>
-                <source src="songs/07-Thank-You-For.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:05</span>
-        </li>
-        <li class="song-item">
-            <h2>So What</h2>
-            <audio controls>
-                <source src="songs/08-So-What.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:36</span>
-        </li>
-        <li class="song-item">
-            <h2>BG2U 4GIVE</h2>
-            <audio controls>
-                <source src="songs/09-BG2U-4GIVE.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>2:50</span>
-        </li>
-        <li class="song-item">
-            <h2>Light [poem]</h2>
-            <audio controls>
-                <source src="songs/10-Light-poem.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>2:02</span>
-        </li>
-        <!-- Add more song items as needed -->
-    </ul>
-
-    <div class="platform-links">
-        <h2>Get the music:</h2>
-        <a href="https://open.spotify.com/artist/your-spotify-id" target="_blank">
-            <img src="images/spotify-banner.png" alt="Spotify">
-        </a>
-        <a href="https://music.apple.com/us/artist/your-apple-id" target="_blank">
-            <img src="images/apple-music-banner.png" alt="Apple Music">
-        </a>
-        <a href="https://www.youtube.com/channel/your-youtube-channel-id" target="_blank">
-            <img src="images/youtube-banner.png" alt="YouTube">
-        </a>
-        <a href="https://music.amazon.com/artists/your-amazon-id" target="_blank">
-            <img src="images/amazon-banner.png" alt="Amazon Music">
-        </a>
-        <a href="https://www.deezer.com/en/artist/your-deezer-id" target="_blank">
-            <img src="images/deezer-banner.png" alt="Deezer">
-        </a>
-    </div>
+    <!-- Embedded Spotify Playlist -->
+    <iframe style="border-radius:12px" src="https://open.spotify.com/embed/album/49JnWym3X5izUPFvnquMEY?utm_source=generator" width="100%" height="352" frameborder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
 
 </body>
 </html>

@@ -2,173 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Be Good 2 Yourself</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #141414;
-            color: #fff;
-            margin: 0;
-            padding: 0;
-        }
-        .album-cover {
-            width: 100%;
-            max-width: 600px;
-            margin: 20px auto;
-            display: block;
-        }
-        .song-list {
-            list-style: none;
-            padding: 0;
-            max-width: 600px;
-            margin: 20px auto;
-        }
-        .song-item {
-            margin: 20px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .song-item h2 {
-            font-size: 1.2em;
-            margin: 0;
-        }
-        audio {
-            width: 60%;
-        }
-        h1 {
-            margin-top: 20px;
-            font-size: 2.5em;
-        }
-        .platform-links {
-            margin-top: 40px;
-        }
-        .platform-links img {
-            width: 150px;
-            margin: 10px;
-            transition: transform 0.3s ease;
-        }
-        .platform-links img:hover {
-            transform: scale(1.05);
-        }
-    </style>
-    <script>
-        // Disable right-click on audio elements to prevent saving the files
-        document.addEventListener('contextmenu', function(e) {
-            if (e.target.nodeName === 'AUDIO') {
-                e.preventDefault();
-            }
-        }, false);
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jumpkat - Cat Juggling Game</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="fade-in">
+    <div id="counter">0</div>
+    <canvas id="gameCanvas"></canvas>
+    <button id="resetButton">Reset Game</button>
 
-    <h1>Be Good 2 Yourself</h1>
-    <img src="images/album-cover.jpg" alt="Album Cover" class="album-cover">
+    <!-- Navigation Text Blocks for Page Transitions -->
+    <div id="left-text-block">CHECK OUT MY GAME: NEGATIVE SPACE (COMING SOON)</div>
+    <div id="right-text-block">CHECK OUT MY MUSIC: BE GOOD 2 YOURSELF</div>
 
-    <ul class="song-list">
-        <li class="song-item">
-            <h2>I Am Enough</h2>
-            <audio controls>
-                <source src="songs/01-I-Am-Enough.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:35</span>
-        </li>
-        <li class="song-item">
-            <h2>Redemption Time</h2>
-            <audio controls>
-                <source src="songs/02-Redemption-Time.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:20</span>
-        </li>
-        <li class="song-item">
-            <h2>Reaching Infinity</h2>
-            <audio controls>
-                <source src="songs/03-Reaching-Infinity.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>2:52</span>
-        </li>
-        <li class="song-item">
-            <h2>Wobble</h2>
-           <audio controls>
-                <source src="https://drive.google.com/uc?export=download&id=1PbyqKu5DCO7S61488FRN_qRoe2BzRYq2" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:53</span>
-        </li>
-        <li class="song-item">
-            <h2>Vortex</h2>
-            <audio controls>
-                <source src="songs/05-Vortex.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>4:40</span>
-        </li>
-        <li class="song-item">
-            <h2>Get It</h2>
-            <audio controls>
-                <source src="songs/06-Get-It.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>4:19</span>
-        </li>
-        <li class="song-item">
-            <h2>Thank You For</h2>
-            <audio controls>
-                <source src="songs/07-Thank-You-For.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:05</span>
-        </li>
-        <li class="song-item">
-            <h2>So What</h2>
-            <audio controls>
-                <source src="songs/08-So-What.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>3:36</span>
-        </li>
-        <li class="song-item">
-            <h2>BG2U 4GIVE</h2>
-            <audio controls>
-                <source src="songs/09-BG2U-4GIVE.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>2:50</span>
-        </li>
-        <li class="song-item">
-            <h2>Light [poem]</h2>
-            <audio controls>
-                <source src="songs/10-Light-poem.mp3" type="audio/mpeg">
-                Your browser does not support the audio element.
-            </audio>
-            <span>2:02</span>
-        </li>
-        <!-- Add more song items as needed -->
-    </ul>
+    <!-- Matter.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <!-- Custom JavaScript for the Game and Transitions -->
+    <script src="js/game.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const body = document.querySelector("body");
+            setTimeout(() => {
+                body.classList.remove("fade-in");
+            }, 1000);
+        });
 
-    <div class="platform-links">
-        <h2>Get the music:</h2>
-        <a href="https://open.spotify.com/artist/your-spotify-id" target="_blank">
-            <img src="images/spotify-banner.png" alt="Spotify">
-        </a>
-        <a href="https://music.apple.com/us/artist/your-apple-id" target="_blank">
-            <img src="images/apple-music-banner.png" alt="Apple Music">
-        </a>
-        <a href="https://www.youtube.com/channel/your-youtube-channel-id" target="_blank">
-            <img src="images/youtube-banner.png" alt="YouTube">
-        </a>
-        <a href="https://music.amazon.com/artists/your-amazon-id" target="_blank">
-            <img src="images/amazon-banner.png" alt="Amazon Music">
-        </a>
-        <a href="https://www.deezer.com/en/artist/your-deezer-id" target="_blank">
-            <img src="images/deezer-banner.png" alt="Deezer">
-        </a>
-    </div>
+        // Function to initiate fade-out before navigating to the next page
+        function slideTransition(direction) {
+            const body = document.querySelector("body");
+            body.classList.add("fade-out");
+            setTimeout(() => {
+                window.location.href = direction === "left" ? "ns_coming_soon.html" : "music.html";
+            }, 1000);
+        }
 
+        // Event listeners for navigation prompts
+        document.addEventListener("DOMContentLoaded", function() {
+            const leftTextBlock = document.querySelector("#left-text-block");
+            const rightTextBlock = document.querySelector("#right-text-block");
+
+            if (leftTextBlock) {
+                leftTextBlock.addEventListener("click", () => slideTransition("left"));
+            }
+            if (rightTextBlock) {
+                rightTextBlock.addEventListener("click", () => slideTransition("right"));
+            }
+        });
+    </script>
 </body>
 </html>

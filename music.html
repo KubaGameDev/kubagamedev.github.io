@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Be Good 2 Yourself</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #141414;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+        .album-cover {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            display: block;
+        }
+        .song-list {
+            list-style: none;
+            padding: 0;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        .song-item {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .song-item h2 {
+            font-size: 1.2em;
+            margin: 0;
+            width: 30%;
+            text-align: left;
+        }
+        .song-item audio {
+            width: 50%;
+        }
+        .song-item span {
+            width: 20%;
+            text-align: right;
+        }
+        h1 {
+            margin-top: 20px;
+            font-size: 2.5em;
+        }
+        .service-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 40px;
+            padding-bottom: 20px;
+        }
+        .service-buttons h2 {
+            width: 100%;
+        }
+        .service-buttons .button {
+            display: flex;
+            align-items: center;
+            background-color: #222;
+            color: #fff;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+        .service-buttons .button:hover {
+            background-color: #444;
+        }
+        .service-buttons .button img {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+        }
+        #countdown {
+            position: fixed;
+            left: 0;
+            top: 27%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 10px;
+            font-size: 1.2em;
+            z-index: 1000;
+        }
+    </style>
+    <script>
+        // Disable right-click on audio elements to prevent saving the files
+        document.addEventListener('contextmenu', function(e) {
+            if (e.target.nodeName === 'AUDIO') {
+                e.preventDefault();
+            }
+        }, false);
+
+        // Countdown timer
+        function updateCountdown() {
+            const now = new Date();
+            const targetDate = new Date(now.getFullYear(), 10, 11); // November 11th
+            if (now > targetDate) {
+                targetDate.setFullYear(targetDate.getFullYear() + 1);
+            }
+            const secondsLeft = Math.floor((targetDate - now) / 1000);
+            document.getElementById('countdown').innerText = secondsLeft + ' ';
+        }
+        setInterval(updateCountdown, 1000);
+        window.onload = updateCountdown;
+    </script>
+</head>
+<body>
+
+    <h1>Be Good 2 Yourself</h1>
+    <img src="images/album-cover.jpg" alt="Album Cover" class="album-cover">
+
+    <ul class="song-list">
+        <li class="song-item">
+            <h2>I Am Enough</h2>
+            <audio controls>
+                <source src="songs/01-I-Am-Enough.mp3" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <span>3:35</span>
+        </li>
+        <li class="song-item">
+            <h2>Redemption Time</h2>
+            <audio controls>
+                <source src="songs/02-Redemption-Time.mp3" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <span>3:20</span>
+        </li>
+        <li class="song-item">
+            <h2>Reaching Infinity</h2>
+            <audio controls>
+                <source src="songs/03-Reaching-Infinity.mp3" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+            <span>2:52</span>
+        </li>
+        <!-- Add more song items as needed -->
+    </ul>
+
+    <div class="service-buttons">
+        <h2>Get the music:</h2>
+        <a href="https://open.spotify.com/artist/your-spotify-id" target="_blank" class="button">
+            <img src="images/placeholder-logo.png" alt="Spotify Logo">
+            <span>Spotify</span>
+        </a>
+        <a href="https://music.apple.com/us/artist/your-apple-id" target="_blank" class="button">
+            <img src="images/placeholder-logo.png" alt="Apple Music Logo">
+            <span>Apple Music</span>
+        </a>
+        <a href="https://www.youtube.com/channel/your-youtube-channel-id" target="_blank" class="button">
+            <img src="images/placeholder-logo.png" alt="YouTube Logo">
+            <span>YouTube</span>
+        </a>
+        <a href="https://music.amazon.com/artists/your-amazon-id" target="_blank" class="button">
+            <img src="images/placeholder-logo.png" alt="Amazon Music Logo">
+            <span>Amazon Music</span>
+        </a>
+        <a href="https://www.deezer.com/en/artist/your-deezer-id" target="_blank" class="button">
+            <img src="images/placeholder-logo.png" alt="Deezer Logo">
+            <span>Deezer</span>
+        </a>
+        <!-- Add more buttons as needed -->
+    </div>
+
+    <div id="countdown"></div>
+
+</body>
+</html>

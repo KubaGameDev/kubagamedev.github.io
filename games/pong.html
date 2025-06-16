@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <title>Pong</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <script src="script.js" defer></script>
+  <link rel="stylesheet" href="../style.css">
+  <script src="../script.js" defer></script>
   <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
   <style>
     canvas{background:var(--text-color);}
@@ -14,25 +14,31 @@
 <body>
   <canvas id="particles"></canvas>
   <header>
-    <a href="index.html"><img src="images/jumping-cat.svg" alt="Jumpkat" height="40"></a>
+    <a href="../index.html"><img src="../images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
     <nav>
-      <a href="games.html">Games</a>
-      <a href="blog.html">Blog</a>
-      <a href="contact.html">Contact</a>
+      <a href="../index.html">Home</a>
+      <a href="../games/">Games</a>
+      <a href="../blog.html">Blog</a>
+      <a href="../contact.html">Contact</a>
     </nav>
-    <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
+    <div class="header-right">
+      <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
+      <button id="stats-btn" onclick="toggleStats()">Hide Stats</button>
+      <span id="stats"></span>
+    </div>
   </header>
   <main>
     <h1>Pong</h1>
     <canvas id="game" width="400" height="300"></canvas>
   </main>
   <footer>
-    <img src="images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat">
+    <img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat">
   </footer>
 <script>
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
 let p1=150,p2=150,ball={x:200,y:150,vx:2,vy:2};
+const keys={};
 function draw(){
   ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
   ctx.fillRect(0,0,400,300);
@@ -42,6 +48,10 @@ function draw(){
   ctx.fillRect(ball.x,ball.y,10,10);
 }
 function update(){
+  if(keys['w'])p1-=5;
+  if(keys['s'])p1+=5;
+  if(keys['ArrowUp'])p2-=5;
+  if(keys['ArrowDown'])p2+=5;
   ball.x+=ball.vx;ball.y+=ball.vy;
   if(ball.y<=0||ball.y>=290)ball.vy*=-1;
   if(ball.x<=20&&ball.y>p1&&ball.y<p1+50)ball.vx*=-1;
@@ -50,12 +60,8 @@ function update(){
   draw();
   requestAnimationFrame(update);
 }
-document.addEventListener('keydown',e=>{
-  if(e.key==='w')p1-=5;
-  if(e.key==='s')p1+=5;
-  if(e.key==='ArrowUp')p2-=5;
-  if(e.key==='ArrowDown')p2+=5;
-});
+document.addEventListener('keydown',e=>{keys[e.key]=true;});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
 update();
 </script>
 </body>

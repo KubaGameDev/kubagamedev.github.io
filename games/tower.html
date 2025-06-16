@@ -4,28 +4,33 @@
 <meta charset="UTF-8">
 <title>Tower Builder</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<script src="script.js" defer></script>
+<link rel="stylesheet" href="../style.css">
+<script src="../script.js" defer></script>
 <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
 <style>canvas{background:var(--text-color);}</style>
 </head>
 <body>
 <canvas id="particles"></canvas>
 <header>
-<a href="index.html"><img src="images/jumping-cat.svg" alt="Jumpkat" height="40"></a>
+<a href="../index.html"><img src="../images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
 <nav>
-<a href="games.html">Games</a>
-<a href="blog.html">Blog</a>
-<a href="contact.html">Contact</a>
+<a href="../index.html">Home</a>
+<a href="../games/">Games</a>
+<a href="../blog.html">Blog</a>
+<a href="../contact.html">Contact</a>
 </nav>
+<div class="header-right">
 <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
+<button id="stats-btn" onclick="toggleStats()">Hide Stats</button>
+<span id="stats"></span>
+</div>
 </header>
 <main>
 <h1>Tower Builder</h1>
 <canvas id="game" width="400" height="400"></canvas>
 <p>Press space to drop blocks</p>
 </main>
-<footer><img src="images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat"></footer>
+<footer><img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat"></footer>
 <script>
 const c=document.getElementById('game');
 const ctx=c.getContext('2d');
@@ -41,7 +46,7 @@ function draw(){
 function update(){
  armX+=dir*2;
  if(armX<0||armX>360)dir*=-1;
- if(current){current.x=armX;current.y+=2;if(current.y>=380||blocks.some(b=>current.y+20>=b.y&&current.x<b.x+40&&current.x+40>b.x)){blocks.push({x:current.x,y:current.y-2});current=null;}}
+ if(current){current.y+=2;if(current.y>=380||blocks.some(b=>current.y+20>=b.y&&current.x<b.x+40&&current.x+40>b.x)){blocks.push({x:current.x,y:current.y-2});current=null;}}
  draw();
  requestAnimationFrame(update);
 }

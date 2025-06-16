@@ -11,18 +11,24 @@
 <body>
   <canvas id="particles"></canvas>
   <header>
-    <a href="../index.html"><img src="../images/jumping-cat.svg" alt="Jumpkat" height="40"></a>
+    <a href="../index.html"><img src="../images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
     <nav>
-      <a href="../games.html">Games</a>
+      <a href="../index.html">Home</a>
+      <a href="../games/">Games</a>
       <a href="../blog.html">Blog</a>
       <a href="../contact.html">Contact</a>
     </nav>
-    <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
+    <div class="header-right">
+      <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
+      <button id="stats-btn" onclick="toggleStats()">Hide Stats</button>
+      <span id="stats"></span>
+    </div>
   </header>
   <main>
 <h1>Welcome to the Blog</h1>
 <p>This is the first post on Jumpkat where we'll share updates about game development, music and more.</p>
 <div id="comments"></div>
+<input id="name-input" placeholder="Name">
 <textarea id="comment-input" placeholder="Add a comment"></textarea>
 <button onclick="addComment()">Post</button>
 </main>
@@ -36,15 +42,16 @@
 const page='welcome';
 function loadComments(){
  const c=JSON.parse(localStorage.getItem('c_'+page)||'[]');
- document.getElementById('comments').innerHTML=c.map(x=>'<p>'+x+'</p>').join('');
+ document.getElementById('comments').innerHTML=c.map(x=>'<p><strong>'+x.name+'</strong> '+x.date+'<br>'+x.text+'</p>').join('');
 }
 function addComment(){
- const inp=document.getElementById('comment-input');
+ const name=document.getElementById('name-input').value||'Anonymous';
+ const text=document.getElementById('comment-input').value;
  const c=JSON.parse(localStorage.getItem('c_'+page)||'[]');
- c.push(inp.value);
+ c.push({name,text,date:new Date().toLocaleString()});
  localStorage.setItem('c_'+page,JSON.stringify(c));
- inp.value='';
- loadComments();
+ document.getElementById('comment-input').value='';
+loadComments();
 }
 document.addEventListener('DOMContentLoaded',loadComments);
 </script>

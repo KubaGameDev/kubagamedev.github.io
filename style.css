@@ -1,6 +1,7 @@
 :root {
   --bg-color: #000;
   --text-color: #fff;
+  --logo-filter: invert(1);
 }
 
 body {
@@ -31,6 +32,20 @@ button.theme-toggle {
   padding: 5px 10px;
   cursor: pointer;
   font-family: 'Press Start 2P', monospace;
+}
+
+.logo {
+  filter: var(--logo-filter);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#stats {
+  font-size: 12px;
 }
 
 footer {

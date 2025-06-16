@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pong</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+  <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
+  <style>
+    canvas{background:var(--text-color);}
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <header>
+    <a href="index.html"><img src="images/jumping-cat.svg" alt="Jumpkat" height="40"></a>
+    <nav>
+      <a href="games.html">Games</a>
+      <a href="blog.html">Blog</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+    <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
+  </header>
+  <main>
+    <h1>Pong</h1>
+    <canvas id="game" width="400" height="300"></canvas>
+  </main>
+  <footer>
+    <img src="images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat">
+  </footer>
+<script>
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+let p1=150,p2=150,ball={x:200,y:150,vx:2,vy:2};
+function draw(){
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
+  ctx.fillRect(0,0,400,300);
+  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-color');
+  ctx.fillRect(10,p1,10,50);
+  ctx.fillRect(380,p2,10,50);
+  ctx.fillRect(ball.x,ball.y,10,10);
+}
+function update(){
+  ball.x+=ball.vx;ball.y+=ball.vy;
+  if(ball.y<=0||ball.y>=290)ball.vy*=-1;
+  if(ball.x<=20&&ball.y>p1&&ball.y<p1+50)ball.vx*=-1;
+  if(ball.x>=370&&ball.y>p2&&ball.y<p2+50)ball.vx*=-1;
+  if(ball.x<0||ball.x>400){ball.x=200;ball.y=150;}
+  draw();
+  requestAnimationFrame(update);
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='w')p1-=5;
+  if(e.key==='s')p1+=5;
+  if(e.key==='ArrowUp')p2-=5;
+  if(e.key==='ArrowDown')p2+=5;
+});
+update();
+</script>
+</body>
+</html>

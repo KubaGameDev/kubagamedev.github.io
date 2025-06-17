@@ -23,12 +23,41 @@ function loadTheme(){
   }
 }
 
-function loadStats(page){
-  const key='stats_'+page;
-  const count=Number(localStorage.getItem(key)||'0')+1;
-  localStorage.setItem(key,count);
+const PLAUSIBLE_SITE='jumpkat.com';
+// Replace with your Plausible API key if you wish to show global stats
+const PLAUSIBLE_API_KEY='YOUR_API_KEY_HERE';
+
+async function loadStats(page){
   const el=document.getElementById('stats');
-  if(el)el.textContent='Views: '+count;
+  if(!el)return;
+  try{
+    const url=`https://plausible.io/api/v1/stats/aggregate?site_id=${PLAUSIBLE_SITE}&period=all&metrics=pageviews&filters=event%3Apage%3D%3D/${page}`;
+    const res=await fetch(url,{headers:{'Authorization':'Bearer '+PLAUSIBLE_API_KEY}});
+    if(!res.ok)throw new Error('bad response');
+    const data=await res.json();
+    const count=data.results.pageviews.value||0;
+    el.textContent='Views: '+count;
+  }catch(err){
+    const key='stats_'+page;
+    const count=Number(localStorage.getItem(key)||'0')+1;
+    localStorage.setItem(key,count);
+    el.textContent='Views: '+count+' (local)';
+  }
+}
+
+async function loadClicks(eventName){
+  const el=document.getElementById('stats');
+  if(!el)return;
+  try{
+    const url=`https://plausible.io/api/v1/stats/aggregate?site_id=${PLAUSIBLE_SITE}&period=all&metrics=events&filters=event:name==${eventName}`;
+    const res=await fetch(url,{headers:{'Authorization':'Bearer '+PLAUSIBLE_API_KEY}});
+    if(!res.ok)throw new Error('bad response');
+    const data=await res.json();
+    const count=data.results.events.value||0;
+    el.textContent+='\nClicks: '+count;
+  }catch(err){
+    // do nothing if stats can't be loaded
+  }
 }
 
 function toggleStats(){
@@ -72,6 +101,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   particles();
   const page=location.pathname.replace(/^\//,'');
   loadStats(page||'index');
+  loadClicks('stats-click');
+  attachEventTracking();
   albumReveal();
 });
 
@@ -85,4 +116,12 @@ function albumReveal(){
   }
   document.addEventListener('scroll',check);
   check();
+}
+
+function attachEventTracking(){
+  document.querySelectorAll('[data-event]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      if(window.plausible)window.plausible(el.dataset.event);
+    });
+  });
 }

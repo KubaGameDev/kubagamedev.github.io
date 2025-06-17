@@ -14,14 +14,14 @@
     <a href="index.html"><img src="images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
     <nav>
       <a href="index.html">Home</a>
-      <a href="games/">Games</a>
       <a href="blog.html">Blog</a>
       <a href="contact.html">Contact</a>
+      <a href="games/">Games</a>
     </nav>
     <div class="header-right">
       <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
-      <button id="stats-btn" onclick="toggleStats()">Hide Stats</button>
-      <span id="stats"></span>
+      <button id="stats-btn" class="theme-toggle" onclick="toggleStats()">STATS</button>
+      <span id="stats" style="display:none"></span>
     </div>
   </header>
   <main>
@@ -31,8 +31,10 @@
   <footer>
     <img src="images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat">
     <p>Jumpkat established 2023. All rights reserved.</p>
-    <p>Check out Kuba's album while you're here :)</p>
-    <iframe style="border-radius:12px" src="https://open.spotify.com/embed/album/49JnWym3X5izUPFvnquMEY?utm_source=generator" width="100%" height="352" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+    <div id="album" style="display:none">
+      <p>Check out Kuba's album while you're here :)</p>
+      <iframe style="border-radius:12px" src="https://open.spotify.com/embed/album/49JnWym3X5izUPFvnquMEY?utm_source=generator" width="100%" height="352" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+    </div>
   </footer>
   <script>
   const posts=[

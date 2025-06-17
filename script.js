@@ -33,15 +33,8 @@ function loadStats(page){
 
 function toggleStats(){
   const s=document.getElementById('stats');
-  const b=document.getElementById('stats-btn');
-  if(!s||!b)return;
-  if(s.style.display==='none'){
-    s.style.display='inline';
-    b.textContent='Hide Stats';
-  }else{
-    s.style.display='none';
-    b.textContent='Show Stats';
-  }
+  if(!s)return;
+  s.style.display=s.style.display==='none'? 'inline' : 'none';
 }
 
 function particles(){
@@ -79,4 +72,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   particles();
   const page=location.pathname.replace(/^\//,'');
   loadStats(page||'index');
+  albumReveal();
 });
+
+function albumReveal(){
+  const album=document.getElementById('album');
+  const marker=document.querySelector('footer p');
+  if(!album||!marker)return;
+  function check(){
+    const rect=marker.getBoundingClientRect();
+    if(rect.top<=window.innerHeight)album.style.display='block';
+  }
+  document.addEventListener('scroll',check);
+  check();
+}

@@ -17,19 +17,22 @@
     <a href="../index.html"><img src="../images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
     <nav>
       <a href="../index.html">Home</a>
-      <a href="../games/">Games</a>
       <a href="../blog.html">Blog</a>
       <a href="../contact.html">Contact</a>
+      <a href="../games/">Games</a>
     </nav>
     <div class="header-right">
       <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
-      <button id="stats-btn" onclick="toggleStats()">Hide Stats</button>
-      <span id="stats"></span>
+      <button id="stats-btn" class="theme-toggle" onclick="toggleStats()">STATS</button>
+      <span id="stats" style="display:none"></span>
     </div>
   </header>
   <main>
     <h1>Pong</h1>
-    <canvas id="game" width="400" height="300"></canvas>
+    <button id="start-btn">Start</button>
+    <canvas id="game" width="400" height="300" style="display:none"></canvas>
+    <p id="score">0 : 0</p>
+    <p><strong>OBJECTIVE:</strong> Score 10 points by hitting the ball past your opponent.<br><strong>INPUT:</strong> W/S for left paddle, Arrow keys for right.</p>
   </main>
   <footer>
     <img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat">
@@ -37,8 +40,10 @@
 <script>
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
-let p1=150,p2=150,ball={x:200,y:150,vx:2,vy:2};
+const startBtn=document.getElementById('start-btn');
+let p1=125,p2=125,ball={x:200,y:150,vx:2,vy:2},score=[0,0],running=false;
 const keys={};
+function resetBall(){ball.x=200;ball.y=150;ball.vx*=-1;ball.vy=2;}
 function draw(){
   ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
   ctx.fillRect(0,0,400,300);
@@ -48,21 +53,42 @@ function draw(){
   ctx.fillRect(ball.x,ball.y,10,10);
 }
 function update(){
+  if(!running)return;
   if(keys['w'])p1-=5;
   if(keys['s'])p1+=5;
   if(keys['ArrowUp'])p2-=5;
   if(keys['ArrowDown'])p2+=5;
+  p1=Math.max(0,Math.min(250,p1));
+  p2=Math.max(0,Math.min(250,p2));
   ball.x+=ball.vx;ball.y+=ball.vy;
   if(ball.y<=0||ball.y>=290)ball.vy*=-1;
-  if(ball.x<=20&&ball.y>p1&&ball.y<p1+50)ball.vx*=-1;
-  if(ball.x>=370&&ball.y>p2&&ball.y<p2+50)ball.vx*=-1;
-  if(ball.x<0||ball.x>400){ball.x=200;ball.y=150;}
+  if(ball.x<=20&&ball.y>p1&&ball.y<p1+50)ball.vx=Math.abs(ball.vx);
+  if(ball.x>=370&&ball.y>p2&&ball.y<p2+50)ball.vx=-Math.abs(ball.vx);
+  if(ball.x<0){score[1]++;resetBall();}
+  if(ball.x>390){score[0]++;resetBall();}
+  document.getElementById('score').textContent=score[0]+' : '+score[1];
+  if(score[0]===10||score[1]===10){
+    alert((score[0]===10?'Left':'Right')+' wins!');
+    running=false;
+    startBtn.style.display='block';
+    canvas.style.display='none';
+    score=[0,0];
+    p1=p2=125;
+  }
   draw();
   requestAnimationFrame(update);
 }
 document.addEventListener('keydown',e=>{keys[e.key]=true;});
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
-update();
+startBtn.addEventListener('click',()=>{
+  startBtn.style.display='none';
+  canvas.style.display='block';
+  running=true;
+  score=[0,0];
+  p1=p2=125;
+  resetBall();
+  update();
+});
 </script>
 </body>
 </html>

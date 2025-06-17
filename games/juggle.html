@@ -15,26 +15,29 @@
 <a href="../index.html"><img src="../images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
 <nav>
 <a href="../index.html">Home</a>
-<a href="../games/">Games</a>
 <a href="../blog.html">Blog</a>
 <a href="../contact.html">Contact</a>
+<a href="../games/">Games</a>
 </nav>
 <div class="header-right">
 <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
-<button id="stats-btn" onclick="toggleStats()">Hide Stats</button>
-<span id="stats"></span>
+<button id="stats-btn" class="theme-toggle" onclick="toggleStats()">STATS</button>
+<span id="stats" style="display:none"></span>
 </div>
 </header>
 <main>
 <h1>Juggle Cats</h1>
-<canvas id="game" width="400" height="300"></canvas>
+<button id="start-btn">Start</button>
+<canvas id="game" width="400" height="300" style="display:none"></canvas>
 <p>Score: <span id="score">0</span></p>
+<p><strong>OBJECTIVE:</strong> Keep the cats in the air as long as possible.<br><strong>INPUT:</strong> Click on cats.</p>
 </main>
 <footer><img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat"></footer>
 <script>
 const c=document.getElementById('game');
 const ctx=c.getContext('2d');
-let balls=[{x:100,y:280,vy:0},{x:200,y:280,vy:0},{x:300,y:280,vy:0}],score=0;
+const startBtn=document.getElementById('start-btn');
+let balls=[{x:100,y:280,vy:0},{x:200,y:280,vy:0},{x:300,y:280,vy:0}],score=0,running=false;
 function draw(){
  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
  ctx.fillRect(0,0,400,300);
@@ -42,6 +45,7 @@ function draw(){
  balls.forEach(b=>ctx.beginPath(),ctx.arc(b.x,b.y,15,0,Math.PI*2),ctx.fill());
 }
 function update(){
+ if(!running)return;
  balls.forEach(b=>{b.vy+=0.2;b.y+=b.vy;if(b.y>285){b.y=285;b.vy=0;}});
  if(balls.every(b=>b.y>=285)){score=0;document.getElementById('score').textContent=score;}
  draw();
@@ -52,7 +56,7 @@ c.addEventListener('click',e=>{
  const x=e.clientX-rect.left,y=e.clientY-rect.top;
  balls.forEach(b=>{const dx=x-b.x,dy=y-b.y;if(Math.sqrt(dx*dx+dy*dy)<15){b.vy=-5;score++;document.getElementById('score').textContent=score;}});
 });
-update();
+startBtn.addEventListener('click',()=>{startBtn.style.display='none';c.style.display='block';running=true;update();});
 </script>
 </body>
 </html>

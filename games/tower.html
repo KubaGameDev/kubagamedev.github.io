@@ -15,26 +15,29 @@
 <a href="../index.html"><img src="../images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
 <nav>
 <a href="../index.html">Home</a>
-<a href="../games/">Games</a>
 <a href="../blog.html">Blog</a>
 <a href="../contact.html">Contact</a>
+<a href="../games/">Games</a>
 </nav>
 <div class="header-right">
 <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
-<button id="stats-btn" onclick="toggleStats()">Hide Stats</button>
-<span id="stats"></span>
+<button id="stats-btn" class="theme-toggle" onclick="toggleStats()">STATS</button>
+<span id="stats" style="display:none"></span>
 </div>
 </header>
 <main>
 <h1>Tower Builder</h1>
-<canvas id="game" width="400" height="400"></canvas>
-<p>Press space to drop blocks</p>
+<button id="start-btn">Start</button>
+<canvas id="game" width="400" height="400" style="display:none"></canvas>
+<p id="time">Time: 0</p>
+<p><strong>OBJECTIVE:</strong> Build a tower of 10 blocks.<br><strong>INPUT:</strong> Press space to drop blocks.</p>
 </main>
 <footer><img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat"></footer>
 <script>
 const c=document.getElementById('game');
 const ctx=c.getContext('2d');
-let armX=0,dir=1,blocks=[],current={x:0,y:20};
+const startBtn=document.getElementById('start-btn');
+let armX=0,dir=1,blocks=[],current=null,vy=0,running=false,startTime=0,timer;
 function draw(){
  ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
  ctx.fillRect(0,0,400,400);
@@ -44,14 +47,31 @@ function draw(){
  if(current)ctx.fillRect(current.x,current.y,40,20);
 }
 function update(){
+ if(!running)return;
  armX+=dir*2;
  if(armX<0||armX>360)dir*=-1;
- if(current){current.y+=2;if(current.y>=380||blocks.some(b=>current.y+20>=b.y&&current.x<b.x+40&&current.x+40>b.x)){blocks.push({x:current.x,y:current.y-2});current=null;}}
+ if(current){
+  vy+=0.5;
+  current.y+=vy;
+  const hitGround=current.y>=380;
+  const hitBlock=blocks.some(b=>current.y+20>=b.y&&current.x<b.x+40&&current.x+40>b.x);
+  if(hitGround||hitBlock){
+    current.y=hitGround?380:current.y;
+    if(blocks.length&&Math.abs(current.x-blocks[blocks.length-1].x)>40){lose();return;}
+    blocks.push({x:current.x,y:current.y});
+    current=null;vy=0;
+    if(blocks.length>=10){win();return;}
+  }
+ }
  draw();
  requestAnimationFrame(update);
 }
-document.addEventListener('keydown',e=>{if(e.code==='Space'&&!current){current={x:armX,y:0};}});
-update();
+function win(){running=false;clearInterval(timer);alert('You win in '+elapsed()+'s');reset();}
+function lose(){running=false;clearInterval(timer);alert('Game Over');reset();}
+function reset(){startBtn.style.display='block';c.style.display='none';blocks=[];current=null;vy=0;armX=0;dir=1;document.getElementById('time').textContent='0';}
+function elapsed(){return Math.floor((Date.now()-startTime)/1000);}
+startBtn.addEventListener('click',()=>{startBtn.style.display='none';c.style.display='block';running=true;startTime=Date.now();timer=setInterval(()=>{document.getElementById('time').textContent=elapsed();},1000);update();});
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&running&&!current){current={x:armX,y:0};vy=0;}});
 </script>
 </body>
 </html>

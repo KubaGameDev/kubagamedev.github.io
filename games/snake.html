@@ -15,25 +15,34 @@
 <a href="../index.html"><img src="../images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
 <nav>
 <a href="../index.html">Home</a>
-<a href="../games/">Games</a>
 <a href="../blog.html">Blog</a>
 <a href="../contact.html">Contact</a>
+<a href="../games/">Games</a>
 </nav>
 <div class="header-right">
 <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
-<button id="stats-btn" onclick="toggleStats()">Hide Stats</button>
-<span id="stats"></span>
+<button id="stats-btn" class="theme-toggle" onclick="toggleStats()">STATS</button>
+<span id="stats" style="display:none"></span>
 </div>
 </header>
 <main>
 <h1>Snake</h1>
-<canvas id="game" width="400" height="400"></canvas>
+<button id="start-btn">Start</button>
+<canvas id="game" width="400" height="400" style="display:none"></canvas>
+<p>Time: <span id="time">0</span> | Score: <span id="score">1</span></p>
+<p><strong>OBJECTIVE:</strong> Eat food to grow as long as possible.<br><strong>INPUT:</strong> Arrow keys.</p>
 </main>
 <footer><img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat"></footer>
 <script>
 const c=document.getElementById('game');
 const x=c.getContext('2d');
-let snake=[[10,10]],dir=[1,0],food=[15,15];
+const startBtn=document.getElementById('start-btn');
+let snake,dir,food,running=false,time=0,loop,timer;
+function init(){
+ snake=[[10,10]];dir=[1,0];food=[15,15];time=0;
+ document.getElementById('score').textContent=snake.length;
+ document.getElementById('time').textContent=time;
+}
 function draw(){
  x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
  x.fillRect(0,0,400,400);
@@ -42,14 +51,17 @@ function draw(){
  x.fillRect(food[0]*20,food[1]*20,18,18);
 }
 function step(){
+ if(!running)return;
  const head=[snake[0][0]+dir[0],snake[0][1]+dir[1]];
  if(head[0]<0||head[0]>=20||head[1]<0||head[1]>=20||snake.some(s=>s[0]==head[0]&&s[1]==head[1])){
-  snake=[[10,10]];dir=[1,0];
+  endGame();
+  return;
  }
  snake.unshift(head);
  if(head[0]==food[0]&&head[1]==food[1]){
   food=[Math.floor(Math.random()*20),Math.floor(Math.random()*20)];
  }else{snake.pop();}
+ document.getElementById('score').textContent=snake.length;
  draw();
 }
 document.addEventListener('keydown',e=>{
@@ -58,7 +70,9 @@ document.addEventListener('keydown',e=>{
  if(e.key==='ArrowLeft'&&dir[0]!=1)dir=[-1,0];
  if(e.key==='ArrowRight'&&dir[0]!=-1)dir=[1,0];
 });
-setInterval(step,200);
+function tick(){if(running){time++;document.getElementById('time').textContent=time;}}
+function endGame(){running=false;clearInterval(loop);clearInterval(timer);alert('Game Over');startBtn.style.display='block';c.style.display='none';}
+startBtn.addEventListener('click',()=>{startBtn.style.display='none';c.style.display='block';init();running=true;loop=setInterval(step,200);timer=setInterval(tick,1000);});
 </script>
 </body>
 </html>

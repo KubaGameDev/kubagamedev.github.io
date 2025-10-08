@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../style.css">
 <script src="../script.js" defer></script>
 <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
-<style>canvas{background:var(--text-color);}</style>
+<style>canvas{background:var(--text-color);} #game{display:block;margin:20px auto;}</style>
 </head>
 <body>
 <canvas id="particles"></canvas>
@@ -71,7 +71,7 @@ document.addEventListener('keydown',e=>{
  if(e.key==='ArrowRight'&&dir[0]!=-1)dir=[1,0];
 });
 function tick(){if(running){time++;document.getElementById('time').textContent=time;}}
-function endGame(){running=false;clearInterval(loop);clearInterval(timer);alert('Game Over');startBtn.style.display='block';c.style.display='none';}
+function endGame(){running=false;clearInterval(loop);clearInterval(timer);alert('Game Over! Time: '+time+'s | Score: '+snake.length);startBtn.style.display='block';c.style.display='none';}
 startBtn.addEventListener('click',()=>{startBtn.style.display='none';c.style.display='block';init();running=true;loop=setInterval(step,200);timer=setInterval(tick,1000);});
 </script>
 </body>

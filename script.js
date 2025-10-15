@@ -20,7 +20,8 @@ function loadTheme(){
     document.documentElement.style.setProperty('--bg-color','#fff');
     document.documentElement.style.setProperty('--text-color','#000');
     document.documentElement.style.setProperty('--logo-filter','invert(0)');
-  }else if(saved==='dark'){
+  }else{
+    // Default to dark theme (saved==='dark' or no saved preference)
     document.documentElement.style.setProperty('--bg-color','#000');
     document.documentElement.style.setProperty('--text-color','#fff');
     document.documentElement.style.setProperty('--logo-filter','invert(1)');

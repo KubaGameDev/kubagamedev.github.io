@@ -78,7 +78,12 @@ function update(){
   draw();
   requestAnimationFrame(update);
 }
-document.addEventListener('keydown',e=>{keys[e.key]=true;});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight'){
+    e.preventDefault();
+  }
+  keys[e.key]=true;
+});
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
 startBtn.addEventListener('click',()=>{
   startBtn.style.display='none';

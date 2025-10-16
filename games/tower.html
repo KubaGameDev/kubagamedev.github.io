@@ -71,7 +71,13 @@ function lose(){running=false;clearInterval(timer);alert('Game Over');reset();}
 function reset(){startBtn.style.display='block';c.style.display='none';blocks=[];current=null;vy=0;armX=0;dir=1;document.getElementById('time').textContent='0';}
 function elapsed(){return Math.floor((Date.now()-startTime)/1000);}
 startBtn.addEventListener('click',()=>{startBtn.style.display='none';c.style.display='block';running=true;startTime=Date.now();timer=setInterval(()=>{document.getElementById('time').textContent=elapsed();},1000);update();});
-document.addEventListener('keydown',e=>{if(e.code==='Space'&&running&&!current){current={x:armX,y:0};vy=0;}});
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&running&&!current){
+    e.preventDefault();
+    current={x:armX,y:0};
+    vy=0;
+  }
+});
 </script>
 </body>
 </html>

@@ -86,6 +86,24 @@ canvas#particles {
   z-index: -1;
 }
 
+canvas#game {
+  border: 3px solid var(--text-color);
+  display: block;
+  margin: 20px auto;
+}
+
+#start-btn {
+  display: block;
+  margin: 20px auto;
+  background: none;
+  border: 2px solid var(--text-color);
+  color: var(--text-color);
+  padding: 10px 20px;
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+}
+
 .game-button {
   display: inline-block;
   margin: 20px;

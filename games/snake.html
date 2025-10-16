@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../style.css">
 <script src="../script.js" defer></script>
 <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
-<style>canvas{background:var(--bg-color);} #game{display:block;margin:20px auto;}</style>
+<style>canvas{background:var(--bg-color);}</style>
 </head>
 <body>
 <canvas id="particles"></canvas>
@@ -37,9 +37,9 @@
 const c=document.getElementById('game');
 const x=c.getContext('2d');
 const startBtn=document.getElementById('start-btn');
-let snake,dir,food,running=false,time=0,loop,timer;
+let snake,dir,nextDir,food,running=false,time=0,loop,timer;
 function init(){
- snake=[[10,10]];dir=[1,0];food=[15,15];time=0;
+ snake=[[10,10]];dir=[1,0];nextDir=[1,0];food=[15,15];time=0;
  document.getElementById('score').textContent=snake.length;
  document.getElementById('time').textContent=time;
 }
@@ -52,6 +52,7 @@ function draw(){
 }
 function step(){
  if(!running)return;
+ dir=nextDir;
  const head=[snake[0][0]+dir[0],snake[0][1]+dir[1]];
  if(head[0]<0||head[0]>=20||head[1]<0||head[1]>=20||snake.some(s=>s[0]==head[0]&&s[1]==head[1])){
   endGame();
@@ -65,10 +66,13 @@ function step(){
  draw();
 }
 document.addEventListener('keydown',e=>{
- if(e.key==='ArrowUp'&&dir[1]!=1)dir=[0,-1];
- if(e.key==='ArrowDown'&&dir[1]!=-1)dir=[0,1];
- if(e.key==='ArrowLeft'&&dir[0]!=1)dir=[-1,0];
- if(e.key==='ArrowRight'&&dir[0]!=-1)dir=[1,0];
+ if(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight'){
+  e.preventDefault();
+ }
+ if(e.key==='ArrowUp'&&dir[1]!=1)nextDir=[0,-1];
+ if(e.key==='ArrowDown'&&dir[1]!=-1)nextDir=[0,1];
+ if(e.key==='ArrowLeft'&&dir[0]!=1)nextDir=[-1,0];
+ if(e.key==='ArrowRight'&&dir[0]!=-1)nextDir=[1,0];
 });
 function tick(){if(running){time++;document.getElementById('time').textContent=time;}}
 function endGame(){running=false;clearInterval(loop);clearInterval(timer);alert('Game Over! Time: '+time+'s | Score: '+snake.length);startBtn.style.display='block';c.style.display='none';}

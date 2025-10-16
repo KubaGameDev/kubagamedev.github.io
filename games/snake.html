@@ -69,10 +69,10 @@ document.addEventListener('keydown',e=>{
  if(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight'){
   e.preventDefault();
  }
- if(e.key==='ArrowUp'&&dir[1]!=1)nextDir=[0,-1];
- if(e.key==='ArrowDown'&&dir[1]!=-1)nextDir=[0,1];
- if(e.key==='ArrowLeft'&&dir[0]!=1)nextDir=[-1,0];
- if(e.key==='ArrowRight'&&dir[0]!=-1)nextDir=[1,0];
+ if(e.key==='ArrowUp'&&dir[1]!==1)nextDir=[0,-1];
+ if(e.key==='ArrowDown'&&dir[1]!==-1)nextDir=[0,1];
+ if(e.key==='ArrowLeft'&&dir[0]!==1)nextDir=[-1,0];
+ if(e.key==='ArrowRight'&&dir[0]!==-1)nextDir=[1,0];
 });
 function tick(){if(running){time++;document.getElementById('time').textContent=time;}}
 function endGame(){running=false;clearInterval(loop);clearInterval(timer);alert('Game Over! Time: '+time+'s | Score: '+snake.length);startBtn.style.display='block';c.style.display='none';}

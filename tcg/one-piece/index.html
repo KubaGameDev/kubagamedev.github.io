@@ -1,41 +1,170 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OPTCG-App | Jumpkat</title>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../style.css">
-  <script src="../../script.js" defer></script>
-  <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
-</head>
-<body>
-  <canvas id="particles"></canvas>
-  <header>
-    <a href="/"><img src="../../images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/blog.html">Blog</a>
-      <a href="/contact.html">Contact</a>
-      <a href="/games/">Games</a>
-    </nav>
-    <div class="header-right">
-      <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
-      <button id="stats-btn" class="theme-toggle" onclick="toggleStats()" data-event="stats-click">STATS</button>
-      <span id="stats" style="display:none"></span>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OPTCG-App | Jumpkat</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="page-chrome" aria-hidden="true">
+        <span class="chrome-medallion chrome-medallion-port"></span>
+        <span class="chrome-medallion chrome-medallion-compass"></span>
+      </div>
+
+      <header class="hero">
+        <div>
+          <a class="jumpkat-top-link" href="/">← Jumpkat</a>
+          <p class="eyebrow">One Piece TCG</p>
+          <h1>OPTCG-App <span class="prototype-badge">Static Prototype</span></h1>
+          <p class="hero-copy">Track a browser-local collection, import/export your data, and preview the future deck intelligence workflow for Jumpkat's One Piece TCG tools.</p>
+        </div>
+        <div class="hero-actions static-actions">
+          <button id="export-button" class="button secondary" type="button">Export Data</button>
+          <label class="button tertiary import-control" for="import-file-input">Import Data</label>
+          <input id="import-file-input" type="file" accept="application/json,.json">
+          <button id="reset-sample-button" class="button tertiary" type="button">Reset Sample</button>
+          <button id="add-card-button" class="button primary" type="button">Add Card</button>
+        </div>
+      </header>
+
+      <p class="static-notice"><strong>Privacy note.</strong> This GitHub Pages build has no backend and uses no API keys. Edits are saved only in this browser with localStorage. Use Export Data to back up your collection and Import Data to restore it on another browser/device.</p>
+
+      <section class="summary-grid" aria-label="Collection summary">
+        <article class="summary-card">
+          <span class="summary-label">Cardmarket Total</span>
+          <strong id="cardmarket-total">£0.00</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">eBay Sold Total</span>
+          <strong id="ebay-total">£0.00</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Cards Owned</span>
+          <strong id="quantity-total">0</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Unique Rows</span>
+          <strong id="unique-rows">0</strong>
+        </article>
+      </section>
+
+      <main class="workspace">
+        <aside class="panel browse-panel" aria-label="Search and filters">
+          <label class="field field-search">
+            <span>Search</span>
+            <input id="search-input" type="search" placeholder="Code, name, colour, notes">
+          </label>
+
+          <section class="filter-panel" aria-label="Collection filters">
+            <div class="filter-panel-header">
+              <p id="filter-summary" class="filter-summary">Showing all cards.</p>
+              <button id="clear-filters-button" class="button tertiary" type="button">Clear Filters</button>
+            </div>
+            <div id="facet-filters" class="facet-filters"></div>
+          </section>
+        </aside>
+
+        <section class="panel list-panel" aria-labelledby="collection-heading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Collection</p>
+              <h2 id="collection-heading">Card List</h2>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="card-table">
+              <thead>
+                <tr>
+                  <th class="col-status"><button class="table-sort table-sort-icon" type="button" data-sort-column="status" title="Sort by status" aria-label="Sort by status"><span class="status-header-icon" aria-hidden="true"></span><span class="visually-hidden">Status</span><span class="sort-indicator">↕</span></button></th>
+                  <th class="col-code"><button class="table-sort" type="button" data-sort-column="card_code" title="Sort by code">Code <span class="sort-indicator">↕</span></button></th>
+                  <th class="col-rarity"><button class="table-sort" type="button" data-sort-column="rarity" title="Sort by rarity">Rar <span class="sort-indicator">↕</span></button></th>
+                  <th class="col-name"><button class="table-sort" type="button" data-sort-column="card_name" title="Sort by name">Name <span class="sort-indicator">↕</span></button></th>
+                  <th class="col-qty"><button class="table-sort" type="button" data-sort-column="quantity" title="Sort by quantity">Qty <span class="sort-indicator">↕</span></button></th>
+                  <th class="col-colour"><button class="table-sort" type="button" data-sort-column="colour" title="Sort by colour">Clr <span class="sort-indicator">↕</span></button></th>
+                  <th class="col-recent"><button class="table-sort" type="button" data-sort-column="updated_at" title="Sort by recent activity">Recent <span class="sort-indicator">↕</span></button></th>
+                  <th class="col-price"><button class="table-sort" type="button" data-sort-column="cardmarket_avg_50_gbp" title="Sort by Cardmarket price">CM <span class="sort-indicator">↕</span></button></th>
+                  <th class="col-price"><button class="table-sort" type="button" data-sort-column="ebay_sold_avg_20_gbp" title="Sort by eBay sold price">eBay <span class="sort-indicator">↕</span></button></th>
+                </tr>
+              </thead>
+              <tbody id="card-table-body">
+                <tr><td colspan="9" class="empty-state">Loading collection...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="panel detail-panel is-hidden" aria-labelledby="detail-heading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Details</p>
+              <h2 id="detail-heading">Selected Card</h2>
+            </div>
+            <div class="detail-actions">
+              <button id="hide-detail-button" class="button tertiary" type="button" disabled>Hide</button>
+              <button id="edit-card-button" class="button secondary" type="button" disabled>Edit</button>
+              <button id="delete-card-button" class="button danger" type="button" disabled>Remove</button>
+            </div>
+          </div>
+          <div id="detail-content" class="detail-content">
+            <p class="detail-empty">Select a card from the list to inspect its values and metadata.</p>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="page-footer" aria-label="Legal notice">
+        <p class="legal-copy">
+          <strong>Legal notice.</strong> <a href="https://en.onepiece-cardgame.com/" target="_blank" rel="noreferrer">ONE PIECE CARD GAME</a>, related names, card artwork, card images, and associated marks remain the property of their respective rights holders, including Eiichiro Oda/Shueisha and Toei Animation where applicable. JUMPKAT LTD is an independent collection-tracking tool and is not affiliated with, endorsed by, or sponsored by Bandai or the ONE PIECE rights holders. This public prototype stores edits locally in your browser only.
+        </p>
+      </footer>
     </div>
-  </header>
 
-  <main>
-    <h1>OPTCG-App</h1>
-    <p>One Piece TCG collection intelligence, deckbuilding, meta analysis, and playtesting tools are coming soon.</p>
-    <p>This early public page is a placeholder for the future Jumpkat One Piece TCG app.</p>
-    <p><a href="/" class="game-button">Back to Jumpkat</a></p>
-  </main>
+    <div id="modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Collection Editor</p>
+            <h2 id="modal-title">Add Card</h2>
+          </div>
+          <button id="close-modal-button" class="icon-button" type="button" aria-label="Close dialog">×</button>
+        </div>
 
-  <footer>
-    <img src="../../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat">
-    <p>Jumpkat established 2023. All rights reserved.</p>
-  </footer>
-</body>
+        <form id="card-form" class="card-form">
+          <input id="editing-id-input" type="hidden">
+          <div class="form-grid">
+            <label class="field"><span>Card Code</span><input id="card-code-input" name="card_code" type="text" placeholder="OP01-001" required></label>
+            <label class="field"><span>Quantity</span><input id="quantity-input" name="quantity" type="number" min="1" placeholder="1"></label>
+            <label class="field"><span>Print Version</span><input id="print-version-input" name="print_version" type="text" placeholder="V.1"></label>
+            <label class="field"><span>Language</span><input id="language-input" name="language" type="text" placeholder="English"></label>
+            <label class="field"><span>Card Name</span><input id="card-name-input" name="card_name" type="text" placeholder="Roronoa Zoro"></label>
+            <label class="field"><span>Colour</span><input id="colour-input" name="colour" type="text" placeholder="Red"></label>
+            <label class="field"><span>Rarity</span><input id="rarity-input" name="rarity" type="text" placeholder="L / SR / R"></label>
+            <label class="field"><span>Card Type</span><input id="card-type-input" name="card_type" type="text" placeholder="LEADER"></label>
+            <label class="field"><span>Set Code</span><input id="set-code-input" name="set_code" type="text" placeholder="OP-13"></label>
+            <label class="field"><span>Official Set</span><input id="official-set-label-input" name="official_set_label" type="text" placeholder="-CARRYING ON HIS WILL- [OP-13]"></label>
+            <label class="field"><span>Life</span><input id="life-input" name="life" type="text"></label>
+            <label class="field"><span>Cost</span><input id="cost-input" name="cost" type="text"></label>
+            <label class="field"><span>Power</span><input id="power-input" name="power" type="text"></label>
+            <label class="field"><span>Cardmarket Avg GBP</span><input id="cardmarket-input" name="cardmarket_avg_50_gbp" type="number" min="0" step="0.01"></label>
+            <label class="field"><span>eBay Sold Avg GBP</span><input id="ebay-input" name="ebay_sold_avg_20_gbp" type="number" min="0" step="0.01"></label>
+            <label class="field"><span>Status</span><select id="status-input" name="status"><option value="ok">ok</option><option value="needs_review">needs_review</option><option value="price_unavailable">price_unavailable</option><option value="not_found">not_found</option></select></label>
+            <label class="field"><span>Official Image URL</span><input id="official-image-url-input" name="official_image_url" type="url"></label>
+            <label class="field"><span>Collector's Notes</span><textarea id="variant-notes-input" name="variant_notes" placeholder="Optional collector notes"></textarea></label>
+          </div>
+
+          <p id="form-status" class="form-status" aria-live="polite"></p>
+
+          <div class="modal-actions">
+            <button id="cancel-modal-button" class="button tertiary" type="button">Cancel</button>
+            <button id="save-card-button" class="button primary" type="submit">Save Card</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <script src="./app.js" defer></script>
+  </body>
 </html>

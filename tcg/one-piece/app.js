@@ -1,5 +1,24 @@
 const STORAGE_KEY = "jumpkat.optcg.collection.v1";
 const SEED_URL = "./data/collection.seed.json";
+const CONFIG = window.OPTCG_CONFIG || {};
+const API_BASE_URL = String(CONFIG.apiBaseUrl || "").replace(/\/$/, "");
+const USE_API = Boolean(API_BASE_URL);
+
+async function apiFetch(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : {};
+  if (!response.ok) {
+    throw new Error(payload.error || `API request failed with ${response.status}`);
+  }
+  return payload;
+}
 
 const state = {
   rows: [],
@@ -140,6 +159,10 @@ async function loadSeedRows() {
 }
 
 async function loadRows() {
+  if (USE_API) {
+    const payload = await apiFetch("/api/collection");
+    return (payload.rows || []).map(coerceRow);
+  }
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
     try {
@@ -388,7 +411,7 @@ function formRow() {
   });
 }
 
-function saveForm(event) {
+async function saveForm(event) {
   event.preventDefault();
   const editingId = document.getElementById("editing-id-input").value;
   const row = formRow();
@@ -402,25 +425,63 @@ function saveForm(event) {
     elements.formStatus.textContent = "That card/version/language/notes row already exists. Edit the existing row instead.";
     return;
   }
-  if (editingId) {
+
+  if (USE_API) {
+    try {
+      if (editingId) {
+        const original = state.rows.find((candidate) => rowId(candidate) === editingId);
+        const payload = await apiFetch("/api/collection/update", {
+          method: "POST",
+          body: JSON.stringify({ original, current: row, refresh_prices: false }),
+        });
+        state.rows = state.rows.map((candidate) => rowId(candidate) === editingId ? coerceRow(payload.row) : candidate);
+        state.selectedId = rowId(coerceRow(payload.row));
+      } else {
+        const payload = await apiFetch("/api/collection/add", {
+          method: "POST",
+          body: JSON.stringify({ ...row, refresh_prices: false }),
+        });
+        const savedRow = coerceRow(payload.row);
+        state.rows.push(savedRow);
+        state.selectedId = rowId(savedRow);
+      }
+    } catch (error) {
+      elements.formStatus.textContent = `Backend save failed: ${error.message}`;
+      return;
+    }
+  } else if (editingId) {
     state.rows = state.rows.map((candidate) => rowId(candidate) === editingId ? row : candidate);
+    state.selectedId = newId;
+    saveRows();
   } else {
     state.rows.push(row);
+    state.selectedId = newId;
+    saveRows();
   }
-  state.selectedId = newId;
-  saveRows();
+
   closeModal();
   renderAll();
 }
 
-function deleteSelected() {
+async function deleteSelected() {
   const row = selectedRow();
   if (!row) return;
   const label = row.card_name || row.card_code;
-  if (!confirm(`Remove ${label} from this browser-local collection?`)) return;
+  if (!confirm(`Remove ${label} from this ${USE_API ? "backend" : "browser-local"} collection?`)) return;
+  if (USE_API) {
+    try {
+      await apiFetch("/api/collection/delete", {
+        method: "POST",
+        body: JSON.stringify(row),
+      });
+    } catch (error) {
+      alert(`Backend delete failed: ${error.message}`);
+      return;
+    }
+  }
   state.rows = state.rows.filter((candidate) => rowId(candidate) !== state.selectedId);
   state.selectedId = "";
-  saveRows();
+  if (!USE_API) saveRows();
   renderAll();
 }
 
@@ -463,6 +524,12 @@ function importData(file) {
 }
 
 async function resetSample() {
+  if (USE_API) {
+    state.rows = await loadRows();
+    state.selectedId = "";
+    renderAll();
+    return;
+  }
   if (!confirm("Reset this browser-local collection back to the public sample data?")) return;
   state.rows = await loadSeedRows();
   state.selectedId = "";
@@ -517,6 +584,10 @@ function wireEvents() {
 
 async function init() {
   wireEvents();
+  const notice = document.querySelector(".static-notice");
+  if (notice && USE_API) {
+    notice.innerHTML = `<strong>Private backend mode.</strong> This browser is reading/writing collection rows through <code>${escapeHtml(API_BASE_URL)}</code>. Export Data still creates a local JSON backup.`;
+  }
   try {
     state.rows = await loadRows();
   } catch (error) {

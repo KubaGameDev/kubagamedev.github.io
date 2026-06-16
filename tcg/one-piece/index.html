@@ -32,6 +32,26 @@
 
       <p class="static-notice"><strong>Privacy note.</strong> This GitHub Pages build has no backend and uses no API keys. Edits are saved only in this browser with localStorage. Use Export Data to back up your collection and Import Data to restore it on another browser/device.</p>
 
+      <nav class="app-nav" aria-label="OPTCG app sections">
+        <button class="app-nav-button is-active" type="button" data-section="collection-section">Collection</button>
+        <button class="app-nav-button" type="button" data-section="deck-builder-section">Deck Builder</button>
+        <button class="app-nav-button" type="button" data-section="playtest-section">Playtest Sim</button>
+      </nav>
+
+      <section class="backend-panel panel" aria-labelledby="backend-heading">
+        <div>
+          <p class="eyebrow">Local Backend Bridge</p>
+          <h2 id="backend-heading">Private simulation server</h2>
+          <p class="backend-copy">For deck validation and playtesting, connect this browser to the local backend running on this laptop.</p>
+        </div>
+        <div class="backend-controls">
+          <label class="field"><span>Backend URL</span><input id="backend-url-input" type="url" placeholder="http://127.0.0.1:8000"></label>
+          <button id="save-backend-url-button" class="button secondary" type="button">Save Backend</button>
+          <button id="use-local-backend-button" class="button tertiary" type="button">Use Laptop Backend</button>
+          <p id="backend-status" class="backend-status" aria-live="polite">Browser-local mode. Simulation endpoints need a backend URL.</p>
+        </div>
+      </section>
+
       <section class="summary-grid" aria-label="Collection summary">
         <article class="summary-card">
           <span class="summary-label">Cardmarket Total</span>
@@ -51,7 +71,7 @@
         </article>
       </section>
 
-      <main class="workspace">
+      <main id="collection-section" class="workspace app-section is-active">
         <aside class="panel browse-panel" aria-label="Search and filters">
           <label class="field field-search">
             <span>Search</span>
@@ -114,6 +134,83 @@
           </div>
         </aside>
       </main>
+
+      <section id="deck-builder-section" class="app-section panel builder-panel" aria-labelledby="deck-builder-heading">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Deck Builder</p>
+            <h2 id="deck-builder-heading">Build and validate a 50-card deck</h2>
+            <p class="section-copy">Choose a leader, add cards from your collection rows, then run the backend legality validator.</p>
+          </div>
+          <button id="clear-deck-button" class="button tertiary" type="button">Clear Deck</button>
+        </div>
+
+        <div class="builder-grid">
+          <article class="builder-card">
+            <h3>1. Leader</h3>
+            <label class="field"><span>Leader card</span><select id="leader-select"></select></label>
+          </article>
+          <article class="builder-card">
+            <h3>2. Main deck</h3>
+            <div class="deck-add-row">
+              <label class="field"><span>Card</span><select id="deck-card-select"></select></label>
+              <label class="field deck-qty-field"><span>Qty</span><input id="deck-card-qty-input" type="number" min="1" max="4" value="1"></label>
+              <button id="add-deck-card-button" class="button secondary" type="button">Add to Deck</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="deck-status-grid">
+          <article class="summary-card compact"><span class="summary-label">Leader</span><strong id="deck-leader-summary">None</strong></article>
+          <article class="summary-card compact"><span class="summary-label">Main Deck Count</span><strong id="deck-count-summary">0 / 50</strong></article>
+          <article class="summary-card compact"><span class="summary-label">Validation</span><strong id="deck-validation-summary">Not checked</strong></article>
+        </div>
+
+        <div class="builder-grid two-column">
+          <article class="builder-card">
+            <div class="panel-header tight">
+              <h3>Deck list</h3>
+              <button id="validate-deck-button" class="button primary" type="button">Validate Deck</button>
+            </div>
+            <div id="deck-list" class="deck-list empty-state">No cards added yet.</div>
+          </article>
+          <article class="builder-card">
+            <h3>Validation results</h3>
+            <div id="deck-validation-output" class="validation-output">Pick a leader and build a 50-card main deck, then validate.</div>
+          </article>
+        </div>
+      </section>
+
+      <section id="playtest-section" class="app-section panel playtest-panel" aria-labelledby="playtest-heading">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Playtest Sim</p>
+            <h2 id="playtest-heading">Rules-shell playtest</h2>
+            <p class="section-copy">Start a deterministic game using your deck. Current MVP supports setup, pass turn, and CPU v1 auto-pass.</p>
+          </div>
+          <div class="hero-actions">
+            <button id="start-sim-button" class="button primary" type="button">Start Sim</button>
+            <button id="pass-turn-button" class="button secondary" type="button" disabled>Pass Turn</button>
+          </div>
+        </div>
+
+        <div class="deck-status-grid">
+          <article class="summary-card compact"><span class="summary-label">Turn Player</span><strong id="sim-turn-player">—</strong></article>
+          <article class="summary-card compact"><span class="summary-label">Phase</span><strong id="sim-phase">—</strong></article>
+          <article class="summary-card compact"><span class="summary-label">Turn</span><strong id="sim-turn-number">—</strong></article>
+        </div>
+
+        <div class="builder-grid two-column">
+          <article class="builder-card">
+            <h3>Player zones</h3>
+            <div id="sim-player-zones" class="zone-grid empty-state">Start a sim to see hand, life, deck, and trash counts.</div>
+          </article>
+          <article class="builder-card">
+            <h3>Game log</h3>
+            <ol id="sim-log" class="sim-log"><li>No game started yet.</li></ol>
+          </article>
+        </div>
+      </section>
 
       <footer class="page-footer" aria-label="Legal notice">
         <p class="legal-copy">

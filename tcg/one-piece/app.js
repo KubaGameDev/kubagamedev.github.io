@@ -1,8 +1,10 @@
 const STORAGE_KEY = "jumpkat.optcg.collection.v1";
+const DECK_STORAGE_KEY = "jumpkat.optcg.deck.v1";
+const BACKEND_STORAGE_KEY = "jumpkat.optcg.backendUrl.v1";
 const SEED_URL = "./data/collection.seed.json";
 const CONFIG = window.OPTCG_CONFIG || {};
-const API_BASE_URL = String(CONFIG.apiBaseUrl || "").replace(/\/$/, "");
-const USE_API = Boolean(API_BASE_URL);
+let API_BASE_URL = String(localStorage.getItem(BACKEND_STORAGE_KEY) || CONFIG.apiBaseUrl || "").replace(/\/$/, "");
+let USE_API = Boolean(API_BASE_URL);
 
 async function apiFetch(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -28,6 +30,10 @@ const state = {
   colourFilter: "",
   sortColumn: "card_code",
   sortDirection: "asc",
+  activeSection: "collection-section",
+  deck: { leaderId: "", cards: [] },
+  validation: null,
+  game: null,
 };
 
 const fields = [
@@ -95,6 +101,30 @@ const elements = {
   formStatus: document.getElementById("form-status"),
   closeModalButton: document.getElementById("close-modal-button"),
   cancelModalButton: document.getElementById("cancel-modal-button"),
+  backendUrlInput: document.getElementById("backend-url-input"),
+  saveBackendUrlButton: document.getElementById("save-backend-url-button"),
+  useLocalBackendButton: document.getElementById("use-local-backend-button"),
+  backendStatus: document.getElementById("backend-status"),
+  navButtons: document.querySelectorAll(".app-nav-button"),
+  sections: document.querySelectorAll(".app-section"),
+  leaderSelect: document.getElementById("leader-select"),
+  deckCardSelect: document.getElementById("deck-card-select"),
+  deckQtyInput: document.getElementById("deck-card-qty-input"),
+  addDeckCardButton: document.getElementById("add-deck-card-button"),
+  clearDeckButton: document.getElementById("clear-deck-button"),
+  validateDeckButton: document.getElementById("validate-deck-button"),
+  deckLeaderSummary: document.getElementById("deck-leader-summary"),
+  deckCountSummary: document.getElementById("deck-count-summary"),
+  deckValidationSummary: document.getElementById("deck-validation-summary"),
+  deckList: document.getElementById("deck-list"),
+  deckValidationOutput: document.getElementById("deck-validation-output"),
+  startSimButton: document.getElementById("start-sim-button"),
+  passTurnButton: document.getElementById("pass-turn-button"),
+  simTurnPlayer: document.getElementById("sim-turn-player"),
+  simPhase: document.getElementById("sim-phase"),
+  simTurnNumber: document.getElementById("sim-turn-number"),
+  simPlayerZones: document.getElementById("sim-player-zones"),
+  simLog: document.getElementById("sim-log"),
 };
 
 function normalizeText(value) {
@@ -334,12 +364,165 @@ function renderSortIndicators() {
   });
 }
 
+function deckCardFromRow(row, quantity = null) {
+  return {
+    card_code: row.card_code,
+    card_name: row.card_name,
+    card_type: row.card_type,
+    colour: row.colour,
+    quantity: quantity ?? (Number(row.quantity || 1) || 1),
+    life: row.life,
+    cost: row.cost,
+    power: row.power,
+  };
+}
+
+function deckPayload() {
+  const leader = state.rows.find((row) => rowId(row) === state.deck.leaderId);
+  return {
+    name: "Browser Deck",
+    leader: leader ? deckCardFromRow(leader, 1) : {},
+    cards: state.deck.cards.map((entry) => {
+      const row = state.rows.find((candidate) => rowId(candidate) === entry.rowId);
+      return row ? deckCardFromRow(row, entry.quantity) : null;
+    }).filter(Boolean),
+  };
+}
+
+function saveDeck() {
+  localStorage.setItem(DECK_STORAGE_KEY, JSON.stringify(state.deck, null, 2));
+}
+
+function loadDeck() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) || "{}");
+    if (stored && Array.isArray(stored.cards)) {
+      state.deck = { leaderId: stored.leaderId || "", cards: stored.cards };
+    }
+  } catch (error) {
+    console.warn("Stored deck was invalid; starting fresh.", error);
+  }
+}
+
+function localDeckCheck(deck) {
+  const errors = [];
+  const leaderColours = normalizeText(deck.leader?.colour).toLowerCase().split(/[\/,-]/).map((part) => part.trim()).filter(Boolean);
+  const count = deck.cards.reduce((total, card) => total + (Number(card.quantity || 0) || 0), 0);
+  if (!deck.leader?.card_code) errors.push("Choose a leader.");
+  if (deck.leader?.card_type && normalizeText(deck.leader.card_type).toUpperCase() !== "LEADER") errors.push("Selected leader row is not typed as LEADER.");
+  if (count !== 50) errors.push(`Main deck has ${count} cards; expected 50.`);
+  for (const card of deck.cards) {
+    const qty = Number(card.quantity || 0) || 0;
+    if (qty > 4) errors.push(`${card.card_code} has ${qty} copies; maximum is 4.`);
+    const colour = normalizeText(card.colour).toLowerCase();
+    if (colour && leaderColours.length && !leaderColours.includes(colour)) errors.push(`${card.card_code} has colour ${colour} outside leader colours ${leaderColours.join(", ")}.`);
+  }
+  return { is_legal: errors.length === 0, main_deck_count: count, leader_colours: leaderColours, errors, warnings: USE_API ? [] : ["Local browser check only; backend validator is preferred."] };
+}
+
+function setBackendUrl(url) {
+  API_BASE_URL = String(url || "").trim().replace(/\/$/, "");
+  USE_API = Boolean(API_BASE_URL);
+  if (USE_API) localStorage.setItem(BACKEND_STORAGE_KEY, API_BASE_URL);
+  else localStorage.removeItem(BACKEND_STORAGE_KEY);
+  renderBackendStatus();
+}
+
+async function renderBackendStatus() {
+  if (elements.backendUrlInput) elements.backendUrlInput.value = API_BASE_URL;
+  if (!elements.backendStatus) return;
+  if (!USE_API) {
+    elements.backendStatus.textContent = "Browser-local mode. Deck validation can do a basic local check; playtesting needs the backend.";
+    return;
+  }
+  elements.backendStatus.textContent = `Checking ${API_BASE_URL}...`;
+  try {
+    const payload = await apiFetch("/api/health", { method: "GET" });
+    elements.backendStatus.textContent = `Connected: ${payload.service || "backend"} is ${payload.status || "available"}.`;
+  } catch (error) {
+    elements.backendStatus.textContent = `Backend not reachable: ${error.message}`;
+  }
+}
+
+function renderNavigation() {
+  elements.sections.forEach((section) => section.classList.toggle("is-active", section.id === state.activeSection));
+  elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.section === state.activeSection));
+}
+
+function renderDeckBuilder() {
+  const leaders = state.rows.filter((row) => normalizeText(row.card_type).toUpperCase() === "LEADER");
+  const cards = state.rows.filter((row) => normalizeText(row.card_type).toUpperCase() !== "LEADER");
+  const option = (row) => `<option value="${escapeHtml(rowId(row))}">${escapeHtml(row.card_code)} — ${escapeHtml(row.card_name || "Unnamed")} ${row.colour ? `(${escapeHtml(row.colour)})` : ""}</option>`;
+  elements.leaderSelect.innerHTML = `<option value="">Choose leader...</option>${leaders.map(option).join("")}`;
+  elements.leaderSelect.value = state.deck.leaderId;
+  elements.deckCardSelect.innerHTML = cards.length ? cards.map(option).join("") : `<option value="">No non-leader cards available</option>`;
+
+  const deck = deckPayload();
+  const count = deck.cards.reduce((total, card) => total + (Number(card.quantity || 0) || 0), 0);
+  elements.deckLeaderSummary.textContent = deck.leader?.card_code ? `${deck.leader.card_code} ${deck.leader.card_name || ""}` : "None";
+  elements.deckCountSummary.textContent = `${count} / 50`;
+  elements.deckValidationSummary.textContent = state.validation ? (state.validation.is_legal ? "Legal" : "Needs fixes") : "Not checked";
+
+  if (!state.deck.cards.length) {
+    elements.deckList.className = "deck-list empty-state";
+    elements.deckList.textContent = "No cards added yet.";
+  } else {
+    elements.deckList.className = "deck-list";
+    elements.deckList.innerHTML = state.deck.cards.map((entry) => {
+      const row = state.rows.find((candidate) => rowId(candidate) === entry.rowId);
+      return `
+        <div class="deck-list-row">
+          <span><strong>${escapeHtml(entry.quantity)}× ${escapeHtml(row?.card_code || "Missing")}</strong> ${escapeHtml(row?.card_name || "Card not found")}</span>
+          <button class="icon-button small" type="button" data-remove-deck-card="${escapeHtml(entry.rowId)}" aria-label="Remove card">×</button>
+        </div>`;
+    }).join("");
+    elements.deckList.querySelectorAll("[data-remove-deck-card]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.deck.cards = state.deck.cards.filter((entry) => entry.rowId !== button.dataset.removeDeckCard);
+        state.validation = null;
+        saveDeck();
+        renderAll();
+      });
+    });
+  }
+}
+
+function renderValidation() {
+  const validation = state.validation;
+  if (!validation) return;
+  elements.deckValidationOutput.innerHTML = `
+    <p><strong>${validation.is_legal ? "Deck is legal for the current MVP rules." : "Deck needs changes."}</strong></p>
+    <p>Main deck count: ${escapeHtml(validation.main_deck_count ?? "0")}</p>
+    ${validation.errors?.length ? `<h4>Errors</h4><ul>${validation.errors.map((error) => `<li>${escapeHtml(error)}</li>`).join("")}</ul>` : "<p>No errors.</p>"}
+    ${validation.warnings?.length ? `<h4>Warnings</h4><ul>${validation.warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}</ul>` : ""}
+  `;
+}
+
+function renderSimulation() {
+  const game = state.game;
+  elements.passTurnButton.disabled = !game;
+  if (!game) return;
+  elements.simTurnPlayer.textContent = game.turn_player || "—";
+  elements.simPhase.textContent = game.phase || "—";
+  elements.simTurnNumber.textContent = String(game.turn_number || "—");
+  const player = game.players?.player || {};
+  elements.simPlayerZones.className = "zone-grid";
+  elements.simPlayerZones.innerHTML = ["hand", "life", "deck", "trash"].map((zone) => `
+    <div class="zone-card"><span>${zone}</span><strong>${(player[zone] || []).length}</strong></div>
+  `).join("");
+  elements.simLog.innerHTML = (game.log || []).slice(-8).map((entry) => `<li>${escapeHtml(entry)}</li>`).join("");
+}
+
 function renderAll() {
+  renderNavigation();
   renderSummary();
   renderFacets();
   renderTable();
   renderDetails();
   renderSortIndicators();
+  renderDeckBuilder();
+  renderValidation();
+  renderSimulation();
 }
 
 function openModal(row = null) {
@@ -537,7 +720,95 @@ async function resetSample() {
   renderAll();
 }
 
+async function validateDeck() {
+  const deck = deckPayload();
+  if (USE_API) {
+    try {
+      const payload = await apiFetch("/api/decks/validate", {
+        method: "POST",
+        body: JSON.stringify({ deck }),
+      });
+      state.validation = payload.validation;
+    } catch (error) {
+      state.validation = { is_legal: false, main_deck_count: deck.cards.reduce((total, card) => total + Number(card.quantity || 0), 0), errors: [`Backend validation failed: ${error.message}`], warnings: [] };
+    }
+  } else {
+    state.validation = localDeckCheck(deck);
+  }
+  renderAll();
+}
+
+async function startSimulation() {
+  if (!USE_API) {
+    alert("Playtest simulation needs the local backend. Click 'Use Laptop Backend' first while this PC backend is running.");
+    return;
+  }
+  const deck = deckPayload();
+  const check = localDeckCheck(deck);
+  if (!check.is_legal && !confirm("This deck does not pass the basic local check yet. Start the sim anyway?")) return;
+  try {
+    const payload = await apiFetch("/api/sim/new", {
+      method: "POST",
+      body: JSON.stringify({ player_deck: deck, cpu_deck: deck, seed: 123 }),
+    });
+    state.game = payload.game;
+    state.activeSection = "playtest-section";
+    renderAll();
+  } catch (error) {
+    alert(`Could not start simulation: ${error.message}`);
+  }
+}
+
+async function passTurn() {
+  if (!state.game || !USE_API) return;
+  try {
+    const payload = await apiFetch("/api/sim/action", {
+      method: "POST",
+      body: JSON.stringify({ game: state.game, action: { type: "pass" }, cpu_auto: true }),
+    });
+    state.game = payload.game;
+    renderAll();
+  } catch (error) {
+    alert(`Simulation action failed: ${error.message}`);
+  }
+}
+
 function wireEvents() {
+  elements.navButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeSection = button.dataset.section;
+      renderAll();
+    });
+  });
+  elements.saveBackendUrlButton.addEventListener("click", () => setBackendUrl(elements.backendUrlInput.value));
+  elements.useLocalBackendButton.addEventListener("click", () => setBackendUrl("http://127.0.0.1:8000"));
+  elements.leaderSelect.addEventListener("change", () => {
+    state.deck.leaderId = elements.leaderSelect.value;
+    state.validation = null;
+    saveDeck();
+    renderAll();
+  });
+  elements.addDeckCardButton.addEventListener("click", () => {
+    const rowIdValue = elements.deckCardSelect.value;
+    if (!rowIdValue) return;
+    const quantity = Math.max(1, Math.min(4, Number.parseInt(elements.deckQtyInput.value || "1", 10) || 1));
+    const existing = state.deck.cards.find((entry) => entry.rowId === rowIdValue);
+    if (existing) existing.quantity = Math.max(1, Math.min(4, existing.quantity + quantity));
+    else state.deck.cards.push({ rowId: rowIdValue, quantity });
+    state.validation = null;
+    saveDeck();
+    renderAll();
+  });
+  elements.clearDeckButton.addEventListener("click", () => {
+    state.deck = { leaderId: "", cards: [] };
+    state.validation = null;
+    state.game = null;
+    saveDeck();
+    renderAll();
+  });
+  elements.validateDeckButton.addEventListener("click", validateDeck);
+  elements.startSimButton.addEventListener("click", startSimulation);
+  elements.passTurnButton.addEventListener("click", passTurn);
   elements.searchInput.addEventListener("input", () => {
     state.search = elements.searchInput.value;
     renderAll();
@@ -584,6 +855,8 @@ function wireEvents() {
 
 async function init() {
   wireEvents();
+  loadDeck();
+  renderBackendStatus();
   const notice = document.querySelector(".static-notice");
   if (notice && USE_API) {
     notice.innerHTML = `<strong>Private backend mode.</strong> This browser is reading/writing collection rows through <code>${escapeHtml(API_BASE_URL)}</code>. Export Data still creates a local JSON backup.`;

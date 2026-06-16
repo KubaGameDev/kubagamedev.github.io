@@ -147,11 +147,18 @@
 
         <div class="builder-grid">
           <article class="builder-card">
-            <h3>1. Leader</h3>
-            <label class="field"><span>Leader card</span><select id="leader-select"></select></label>
+            <h3>Use a starter preset</h3>
+            <p class="section-copy">Load a starter-style legal test deck so you can try the sim before your owned-card collection is complete.</p>
+            <div class="deck-add-row preset-row">
+              <label class="field"><span>Starter deck preset</span><select id="starter-deck-select"></select></label>
+              <button id="load-starter-deck-button" class="button secondary" type="button">Load Preset</button>
+            </div>
+            <p id="starter-deck-note" class="backend-status">Presets are MVP test shells; exact sealed-product quantities still need verification.</p>
           </article>
           <article class="builder-card">
-            <h3>2. Main deck</h3>
+            <h3>Or use your owned cards</h3>
+            <p class="section-copy">Choose a leader and add cards from the browser-local collection table.</p>
+            <label class="field"><span>Leader card</span><select id="leader-select"></select></label>
             <div class="deck-add-row">
               <label class="field"><span>Card</span><select id="deck-card-select"></select></label>
               <label class="field deck-qty-field"><span>Qty</span><input id="deck-card-qty-input" type="number" min="1" max="4" value="1"></label>

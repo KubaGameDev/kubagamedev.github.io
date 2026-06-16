@@ -2,6 +2,7 @@ const STORAGE_KEY = "jumpkat.optcg.collection.v1";
 const DECK_STORAGE_KEY = "jumpkat.optcg.deck.v1";
 const BACKEND_STORAGE_KEY = "jumpkat.optcg.backendUrl.v1";
 const SEED_URL = "./data/collection.seed.json";
+const STARTER_DECKS_URL = "./data/starter-decks.mvp.json";
 const CONFIG = window.OPTCG_CONFIG || {};
 let API_BASE_URL = String(localStorage.getItem(BACKEND_STORAGE_KEY) || CONFIG.apiBaseUrl || "").replace(/\/$/, "");
 let USE_API = Boolean(API_BASE_URL);
@@ -31,7 +32,8 @@ const state = {
   sortColumn: "card_code",
   sortDirection: "asc",
   activeSection: "collection-section",
-  deck: { leaderId: "", cards: [] },
+  deck: { leaderId: "", cards: [], presetId: "", presetDeck: null },
+  starterDecks: [],
   validation: null,
   game: null,
 };
@@ -108,6 +110,9 @@ const elements = {
   navButtons: document.querySelectorAll(".app-nav-button"),
   sections: document.querySelectorAll(".app-section"),
   leaderSelect: document.getElementById("leader-select"),
+  starterDeckSelect: document.getElementById("starter-deck-select"),
+  loadStarterDeckButton: document.getElementById("load-starter-deck-button"),
+  starterDeckNote: document.getElementById("starter-deck-note"),
   deckCardSelect: document.getElementById("deck-card-select"),
   deckQtyInput: document.getElementById("deck-card-qty-input"),
   addDeckCardButton: document.getElementById("add-deck-card-button"),
@@ -186,6 +191,13 @@ async function loadSeedRows() {
   if (!response.ok) throw new Error(`Could not load seed collection (${response.status})`);
   const payload = await response.json();
   return Array.isArray(payload) ? payload.map(coerceRow) : (payload.rows || []).map(coerceRow);
+}
+
+async function loadStarterDecks() {
+  const response = await fetch(STARTER_DECKS_URL, { cache: "no-cache" });
+  if (!response.ok) throw new Error(`Could not load starter decks (${response.status})`);
+  const payload = await response.json();
+  return Array.isArray(payload) ? payload : (payload.decks || []);
 }
 
 async function loadRows() {
@@ -378,6 +390,15 @@ function deckCardFromRow(row, quantity = null) {
 }
 
 function deckPayload() {
+  if (state.deck.presetDeck) {
+    return {
+      name: state.deck.presetDeck.label || state.deck.presetDeck.product_name || "Starter Preset",
+      leader: state.deck.presetDeck.leader,
+      cards: state.deck.presetDeck.cards || [],
+      preset_id: state.deck.presetDeck.id,
+      source_url: state.deck.presetDeck.source_url,
+    };
+  }
   const leader = state.rows.find((row) => rowId(row) === state.deck.leaderId);
   return {
     name: "Browser Deck",
@@ -397,7 +418,7 @@ function loadDeck() {
   try {
     const stored = JSON.parse(localStorage.getItem(DECK_STORAGE_KEY) || "{}");
     if (stored && Array.isArray(stored.cards)) {
-      state.deck = { leaderId: stored.leaderId || "", cards: stored.cards };
+      state.deck = { leaderId: stored.leaderId || "", cards: stored.cards, presetId: stored.presetId || "", presetDeck: stored.presetDeck || null };
     }
   } catch (error) {
     console.warn("Stored deck was invalid; starting fresh.", error);
@@ -453,6 +474,16 @@ function renderDeckBuilder() {
   const leaders = state.rows.filter((row) => normalizeText(row.card_type).toUpperCase() === "LEADER");
   const cards = state.rows.filter((row) => normalizeText(row.card_type).toUpperCase() !== "LEADER");
   const option = (row) => `<option value="${escapeHtml(rowId(row))}">${escapeHtml(row.card_code)} — ${escapeHtml(row.card_name || "Unnamed")} ${row.colour ? `(${escapeHtml(row.colour)})` : ""}</option>`;
+  elements.starterDeckSelect.innerHTML = state.starterDecks.length
+    ? state.starterDecks.map((deck) => `<option value="${escapeHtml(deck.id)}">${escapeHtml(deck.label)}</option>`).join("")
+    : `<option value="">No starter presets loaded</option>`;
+  elements.starterDeckSelect.value = state.deck.presetId || state.starterDecks[0]?.id || "";
+  if (state.deck.presetDeck) {
+    const source = state.deck.presetDeck.source_url ? ` Source: ${state.deck.presetDeck.source_url}` : "";
+    elements.starterDeckNote.textContent = `${state.deck.presetDeck.label} loaded. MVP legal shell; exact sealed quantities verified: ${state.deck.presetDeck.exact_product_quantities_verified ? "yes" : "no"}.${source}`;
+  } else {
+    elements.starterDeckNote.textContent = "Presets are MVP test shells; exact sealed-product quantities still need verification.";
+  }
   elements.leaderSelect.innerHTML = `<option value="">Choose leader...</option>${leaders.map(option).join("")}`;
   elements.leaderSelect.value = state.deck.leaderId;
   elements.deckCardSelect.innerHTML = cards.length ? cards.map(option).join("") : `<option value="">No non-leader cards available</option>`;
@@ -463,9 +494,16 @@ function renderDeckBuilder() {
   elements.deckCountSummary.textContent = `${count} / 50`;
   elements.deckValidationSummary.textContent = state.validation ? (state.validation.is_legal ? "Legal" : "Needs fixes") : "Not checked";
 
-  if (!state.deck.cards.length) {
+  if (!deck.cards.length) {
     elements.deckList.className = "deck-list empty-state";
     elements.deckList.textContent = "No cards added yet.";
+  } else if (state.deck.presetDeck) {
+    elements.deckList.className = "deck-list";
+    elements.deckList.innerHTML = deck.cards.map((card) => `
+      <div class="deck-list-row">
+        <span><strong>${escapeHtml(card.quantity)}× ${escapeHtml(card.card_code || "—")}</strong> ${escapeHtml(card.card_name || "Unnamed card")}</span>
+        <span>${escapeHtml(card.card_type || "")}</span>
+      </div>`).join("");
   } else {
     elements.deckList.className = "deck-list";
     elements.deckList.innerHTML = state.deck.cards.map((entry) => {
@@ -784,13 +822,26 @@ function wireEvents() {
   elements.useLocalBackendButton.addEventListener("click", () => setBackendUrl("http://127.0.0.1:8000"));
   elements.leaderSelect.addEventListener("change", () => {
     state.deck.leaderId = elements.leaderSelect.value;
+    state.deck.presetId = "";
+    state.deck.presetDeck = null;
     state.validation = null;
+    saveDeck();
+    renderAll();
+  });
+  elements.loadStarterDeckButton.addEventListener("click", () => {
+    const preset = state.starterDecks.find((deck) => deck.id === elements.starterDeckSelect.value);
+    if (!preset) return;
+    state.deck = { leaderId: "", cards: [], presetId: preset.id, presetDeck: preset };
+    state.validation = null;
+    state.game = null;
     saveDeck();
     renderAll();
   });
   elements.addDeckCardButton.addEventListener("click", () => {
     const rowIdValue = elements.deckCardSelect.value;
     if (!rowIdValue) return;
+    state.deck.presetId = "";
+    state.deck.presetDeck = null;
     const quantity = Math.max(1, Math.min(4, Number.parseInt(elements.deckQtyInput.value || "1", 10) || 1));
     const existing = state.deck.cards.find((entry) => entry.rowId === rowIdValue);
     if (existing) existing.quantity = Math.max(1, Math.min(4, existing.quantity + quantity));
@@ -800,7 +851,7 @@ function wireEvents() {
     renderAll();
   });
   elements.clearDeckButton.addEventListener("click", () => {
-    state.deck = { leaderId: "", cards: [] };
+    state.deck = { leaderId: "", cards: [], presetId: "", presetDeck: null };
     state.validation = null;
     state.game = null;
     saveDeck();
@@ -863,6 +914,7 @@ async function init() {
   }
   try {
     state.rows = await loadRows();
+    state.starterDecks = await loadStarterDecks();
   } catch (error) {
     console.error(error);
     elements.tableBody.innerHTML = `<tr><td colspan="9" class="empty-state">Could not load collection data.</td></tr>`;

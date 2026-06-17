@@ -1,0 +1,11 @@
+services:
+  web:
+    build: ./server
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/website
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+    working_dir: /app

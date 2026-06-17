@@ -144,6 +144,14 @@ const elements = {
   simAttackButton: document.getElementById("sim-attack-button"),
   simActionNote: document.getElementById("sim-action-note"),
   simLog: document.getElementById("sim-log"),
+  batchSimButton: document.getElementById("batch-sim-button"),
+  matchResultsSection: document.getElementById("match-results-section"),
+  playerWinsCount: document.getElementById("player-wins-count"),
+  cpuWinsCount: document.getElementById("cpu-wins-count"),
+  playerWinRate: document.getElementById("player-win-rate"),
+  avgTurnsCount: document.getElementById("avg-turns-count"),
+  batchLog: document.getElementById("batch-log"),
+  clearResultsButton: document.getElementById("clear-results-button"),
   playerDeckSourceSelect: document.getElementById("player-deck-source-select"),
   playerStarterDeckSelect: document.getElementById("player-starter-deck-select"),
   playerLeaderSelect: document.getElementById("player-leader-select"),
@@ -1026,21 +1034,92 @@ async function runCpuVsCpuAutoSim() {
   }
 }
 
-async function passTurn() {
-  if (!state.game || !USE_API) return;
+async function runBatchSimulation() {
+  if (!USE_API) {
+    alert("Batch simulation needs the local backend. Click 'Use Laptop Backend' first while this PC backend is running.");
+    return;
+  }
+  
+  const playerDeck = getPlayerDeckForSim();
+  const cpuDeck = getCpuDeckForSim();
+  
+  if (!playerDeck || !cpuDeck) {
+    alert("Please select decks for both Player and CPU before running batch simulation.");
+    return;
+  }
+  
+  elements.batchSimButton.disabled = true;
+  elements.batchSimButton.textContent = "Running...";
+  
   try {
-    const payload = await apiFetch("/api/sim/action", {
+    const payload = await apiFetch("/api/sim/batch", {
       method: "POST",
-      body: JSON.stringify({ game: state.game, action: { type: "pass" }, cpu_auto: true }),
+      body: JSON.stringify({ player_deck: playerDeck, cpu_deck: cpuDeck, num_games: 10, seed: Math.floor(Math.random() * 1000000) }),
     });
-    state.game = payload.game;
-    renderAll();
+    
+    const result = payload.result;
+    renderMatchResults(result);
   } catch (error) {
-    alert(`Simulation action failed: ${error.message}`);
+    alert(`Batch simulation failed: ${error.message}`);
+  } finally {
+    elements.batchSimButton.disabled = false;
+    elements.batchSimButton.textContent = "Run 10 Games";
   }
 }
 
-function wireEvents() {
+function renderMatchResults(result) {
+  elements.matchResultsSection.classList.remove("is-hidden");
+  elements.playerWinsCount.textContent = String(result.player_wins);
+  elements.cpuWinsCount.textContent = String(result.cpu_wins);
+  const winRate = result.total_games > 0 ? Math.round((result.player_wins / result.total_games) * 100) : 0;
+  elements.playerWinRate.textContent = `${winRate}%`;
+  elements.avgTurnsCount.textContent = String(result.avg_turns);
+  
+  if (result.results && result.results.length) {
+    elements.batchLog.innerHTML = result.results.slice(-10).map((r, i) => {
+      const winner = r.winner === "player" ? "Player" : r.winner === "cpu" ? "CPU" : "Draw";
+      return `<li>Game ${i + 1}: ${winner} wins in ${r.turns} turns (Player life: ${r.player_life_remaining}, CPU life: ${r.cpu_life_remaining})</li>`;
+    }).join("");
+  }
+}
+
+function getPlayerDeckForSim() {
+  const source = state.playtest.playerDeckSource;
+  if (source === "preset") {
+    const preset = state.starterDecks.find((d) => d.id === state.playtest.playerPresetId);
+    return preset ? { name: preset.name, leader: preset.leader, cards: preset.cards } : null;
+  }
+  // owned collection
+  const leaderRow = state.rows.find((r) => r.card_code === state.deck.leaderId);
+  if (!leaderRow) return null;
+  const leader = { card_code: leaderRow.card_code, card_name: leaderRow.card_name, card_type: "LEADER", colour: leaderRow.colour, life: leaderRow.life || "5" };
+  const cards = state.deck.cards.map((entry) => {
+    const row = state.rows.find((r) => r.card_code === entry.rowId);
+    if (!row) return null;
+    return Array(entry.quantity).fill({ card_code: row.card_code, card_name: row.card_name, card_type: row.card_type, colour: row.colour, cost: row.cost || "0", power: row.power || "0" });
+  }).flat().filter(Boolean);
+  return { name: "Owned Deck", leader, cards };
+}
+
+function getCpuDeckForSim() {
+  const source = state.playtest.cpuDeckSource;
+  if (source === "preset") {
+    const preset = state.starterDecks.find((d) => d.id === state.playtest.cpuPresetId);
+    return preset ? { name: preset.name, leader: preset.leader, cards: preset.cards } : null;
+  }
+  // owned collection
+  const leaderRow = state.rows.find((r) => r.card_code === state.deck.leaderId);
+  if (!leaderRow) return null;
+  const leader = { card_code: leaderRow.card_code, card_name: leaderRow.card_name, card_type: "LEADER", colour: leaderRow.colour, life: leaderRow.life || "5" };
+  const cards = state.deck.cards.map((entry) => {
+    const row = state.rows.find((r) => r.card_code === entry.rowId);
+    if (!row) return null;
+    return Array(entry.quantity).fill({ card_code: row.card_code, card_name: row.card_name, card_type: row.card_type, colour: row.colour, cost: row.cost || "0", power: row.power || "0" });
+  }).flat().filter(Boolean);
+  return { name: "Owned Deck", leader, cards };
+}
+
+async function passTurn() {
   elements.navButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.activeSection = button.dataset.section;
@@ -1126,6 +1205,11 @@ function wireEvents() {
       }
     }
   });
+  elements.clearResultsButton.addEventListener("click", () => {
+    elements.matchResultsSection.classList.add("is-hidden");
+    elements.batchSimButton.disabled = true;
+  });
+  elements.batchSimButton.addEventListener("click", runBatchSimulation);
   elements.playerDeckSourceSelect.addEventListener("change", () => {
     state.playtest.playerDeckSource = elements.playerDeckSourceSelect.value;
     state.playtest.playerDeck = null;

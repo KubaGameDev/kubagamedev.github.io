@@ -197,6 +197,7 @@
           </div>
           <div class="hero-actions">
             <button id="start-sim-button" class="button primary" type="button">Start Sim</button>
+            <button id="batch-sim-button" class="button secondary" type="button" disabled>Run 10 Games</button>
             <button id="pass-turn-button" class="button secondary" type="button" disabled>Pass Turn</button>
           </div>
         </div>
@@ -291,6 +292,38 @@
             <ol id="sim-log" class="sim-log"><li>No game started yet.</li></ol>
           </article>
         </div>
+
+        <section id="match-results-section" class="panel match-results-panel is-hidden" aria-labelledby="match-results-heading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Match Results</p>
+              <h2 id="match-results-heading">Simulation Statistics</h2>
+            </div>
+            <button id="clear-results-button" class="button tertiary" type="button">Clear</button>
+          </div>
+          <div class="results-grid">
+            <article class="result-card">
+              <span class="result-label">Player Wins</span>
+              <strong id="player-wins-count">0</strong>
+            </article>
+            <article class="result-card">
+              <span class="result-label">CPU Wins</span>
+              <strong id="cpu-wins-count">0</strong>
+            </article>
+            <article class="result-card">
+              <span class="result-label">Win Rate</span>
+              <strong id="player-win-rate">0%</strong>
+            </article>
+            <article class="result-card">
+              <span class="result-label">Avg Turns</span>
+              <strong id="avg-turns-count">0</strong>
+            </article>
+          </div>
+          <div class="results-details">
+            <h3>Recent Games</h3>
+            <ol id="batch-log" class="batch-log"><li>No games run yet.</li></ol>
+          </div>
+        </section>
       </section>
 
       <footer class="page-footer" aria-label="Legal notice">

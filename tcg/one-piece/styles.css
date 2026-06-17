@@ -1700,6 +1700,69 @@ select:focus-visible {
   padding-left: 2rem;
 }
 
+.match-results-panel {
+  margin-top: 24px;
+}
+
+.match-results-panel.is-hidden {
+  display: none;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.result-card {
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 14px;
+  text-align: center;
+}
+
+.result-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.result-card strong {
+  display: block;
+  font-size: 28px;
+  color: var(--brand);
+}
+
+.results-details {
+  background: var(--panel-deep);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.results-details h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.batch-log {
+  margin: 0;
+  padding-left: 1.5rem;
+  font-size: 13px;
+}
+
+.batch-log li {
+  margin-bottom: 6px;
+}
+
 @media (max-width: 900px) {
   .backend-panel,
   .builder-grid,

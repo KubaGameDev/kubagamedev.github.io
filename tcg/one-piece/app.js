@@ -1119,16 +1119,19 @@ function getCpuDeckForSim() {
   return { name: "Owned Deck", leader, cards };
 }
 
-async function passTurn() {
+function wireEvents() {
+  // Helper: safely add event listener only if element exists
+  const on = (el, evt, fn) => { if (el) el.addEventListener(evt, fn); };
+  
   elements.navButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.activeSection = button.dataset.section;
       renderAll();
     });
   });
-  elements.saveBackendUrlButton.addEventListener("click", () => setBackendUrl(elements.backendUrlInput.value));
-  elements.useLocalBackendButton.addEventListener("click", () => setBackendUrl("http://127.0.0.1:8000"));
-  elements.leaderSelect.addEventListener("change", () => {
+  on(elements.saveBackendUrlButton, "click", () => setBackendUrl(elements.backendUrlInput.value));
+  on(elements.useLocalBackendButton, "click", () => setBackendUrl("http://127.0.0.1:8000"));
+  on(elements.leaderSelect, "change", () => {
     state.deck.leaderId = elements.leaderSelect.value;
     state.deck.presetId = "";
     state.deck.presetDeck = null;
@@ -1136,7 +1139,7 @@ async function passTurn() {
     saveDeck();
     renderAll();
   });
-  elements.loadStarterDeckButton.addEventListener("click", () => {
+  on(elements.loadStarterDeckButton, "click", () => {
     const preset = state.starterDecks.find((deck) => deck.id === elements.starterDeckSelect.value);
     if (!preset) return;
     state.deck = { leaderId: "", cards: [], presetId: preset.id, presetDeck: preset };
@@ -1145,7 +1148,7 @@ async function passTurn() {
     saveDeck();
     renderAll();
   });
-  elements.addDeckCardButton.addEventListener("click", () => {
+  on(elements.addDeckCardButton, "click", () => {
     const rowIdValue = elements.deckCardSelect.value;
     if (!rowIdValue) return;
     state.deck.presetId = "";
@@ -1158,20 +1161,20 @@ async function passTurn() {
     saveDeck();
     renderAll();
   });
-  elements.clearDeckButton.addEventListener("click", () => {
+  on(elements.clearDeckButton, "click", () => {
     state.deck = { leaderId: "", cards: [], presetId: "", presetDeck: null };
     state.validation = null;
     state.game = null;
     saveDeck();
     renderAll();
   });
-  elements.validateDeckButton.addEventListener("click", validateDeck);
-  elements.startSimButton.addEventListener("click", startSimulation);
-  elements.passTurnButton.addEventListener("click", () => doAction({ type: "pass", player: state.game.turn_player }));
-  elements.simDrawButton.addEventListener("click", doDraw);
-  elements.simDonButton.addEventListener("click", doDon);
-  elements.simPlayButton.addEventListener("click", doPlay);
-  elements.simAttackButton.addEventListener("click", () => {
+  on(elements.validateDeckButton, "click", validateDeck);
+  on(elements.startSimButton, "click", startSimulation);
+  on(elements.passTurnButton, "click", () => doAction({ type: "pass", player: state.game?.turn_player }));
+  on(elements.simDrawButton, "click", doDraw);
+  on(elements.simDonButton, "click", doDon);
+  on(elements.simPlayButton, "click", doPlay);
+  on(elements.simAttackButton, "click", () => {
     if (!state.game || state.game.turn_player !== "player") return;
     const player = state.game.players.player;
     if (!player.characters || !player.characters.length) {
@@ -1205,44 +1208,44 @@ async function passTurn() {
       }
     }
   });
-  elements.clearResultsButton.addEventListener("click", () => {
-    elements.matchResultsSection.classList.add("is-hidden");
-    elements.batchSimButton.disabled = true;
+  on(elements.clearResultsButton, "click", () => {
+    if (elements.matchResultsSection) elements.matchResultsSection.classList.add("is-hidden");
+    if (elements.batchSimButton) elements.batchSimButton.disabled = false;
   });
-  elements.batchSimButton.addEventListener("click", runBatchSimulation);
-  elements.playerDeckSourceSelect.addEventListener("change", () => {
+  on(elements.batchSimButton, "click", runBatchSimulation);
+  on(elements.playerDeckSourceSelect, "change", () => {
     state.playtest.playerDeckSource = elements.playerDeckSourceSelect.value;
     state.playtest.playerDeck = null;
     renderAll();
   });
-  elements.cpuDeckSourceSelect.addEventListener("change", () => {
+  on(elements.cpuDeckSourceSelect, "change", () => {
     state.playtest.cpuDeckSource = elements.cpuDeckSourceSelect.value;
     state.playtest.cpuDeck = null;
     renderAll();
   });
-  elements.playerStarterDeckSelect.addEventListener("change", () => {
+  on(elements.playerStarterDeckSelect, "change", () => {
     const preset = state.starterDecks.find((deck) => deck.id === elements.playerStarterDeckSelect.value);
     state.playtest.playerDeck = preset || null;
     renderAll();
   });
-  elements.cpuStarterDeckSelect.addEventListener("change", () => {
+  on(elements.cpuStarterDeckSelect, "change", () => {
     const preset = state.starterDecks.find((deck) => deck.id === elements.cpuStarterDeckSelect.value);
     state.playtest.cpuDeck = preset || null;
     renderAll();
   });
-  elements.simModeSelect.addEventListener("change", () => {
+  on(elements.simModeSelect, "change", () => {
     state.playtest.simMode = elements.simModeSelect.value;
     renderAll();
   });
-  elements.searchInput.addEventListener("input", () => {
+  on(elements.searchInput, "input", () => {
     state.search = elements.searchInput.value;
     renderAll();
   });
-  elements.clearFiltersButton.addEventListener("click", () => {
+  on(elements.clearFiltersButton, "click", () => {
     state.search = "";
     state.statusFilter = "";
     state.colourFilter = "";
-    elements.searchInput.value = "";
+    if (elements.searchInput) elements.searchInput.value = "";
     renderAll();
   });
   document.querySelectorAll(".table-sort").forEach((button) => {
@@ -1257,25 +1260,25 @@ async function passTurn() {
       renderAll();
     });
   });
-  elements.addCardButton.addEventListener("click", () => openModal());
-  elements.editCardButton.addEventListener("click", () => openModal(selectedRow()));
-  elements.deleteCardButton.addEventListener("click", deleteSelected);
-  elements.hideDetailButton.addEventListener("click", () => {
+  on(elements.addCardButton, "click", () => openModal());
+  on(elements.editCardButton, "click", () => openModal(selectedRow()));
+  on(elements.deleteCardButton, "click", deleteSelected);
+  on(elements.hideDetailButton, "click", () => {
     state.selectedId = "";
     renderAll();
   });
-  elements.closeModalButton.addEventListener("click", closeModal);
-  elements.cancelModalButton.addEventListener("click", closeModal);
-  elements.modalBackdrop.addEventListener("click", (event) => {
+  on(elements.closeModalButton, "click", closeModal);
+  on(elements.cancelModalButton, "click", closeModal);
+  on(elements.modalBackdrop, "click", (event) => {
     if (event.target === elements.modalBackdrop) closeModal();
   });
-  elements.cardForm.addEventListener("submit", saveForm);
-  elements.exportButton.addEventListener("click", exportData);
-  elements.importInput.addEventListener("change", () => {
-    const file = elements.importInput.files?.[0];
+  on(elements.cardForm, "submit", saveForm);
+  on(elements.exportButton, "click", exportData);
+  on(elements.importInput, "change", () => {
+    const file = elements.importInput?.files?.[0];
     if (file) importData(file);
   });
-  elements.resetSampleButton.addEventListener("click", resetSample);
+  on(elements.resetSampleButton, "click", resetSample);
 }
 
 async function init() {

@@ -7,7 +7,14 @@
 <link rel="stylesheet" href="../style.css">
 <script src="../script.js" defer></script>
 <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
-<style>canvas{background:var(--bg-color);}</style>
+<style>
+canvas{background:var(--bg-color);}
+#game-container{display:flex;gap:20px;align-items:flex-start;justify-content:center;flex-wrap:wrap;}
+#leaderboard{background:var(--bg-color);border:2px solid var(--text-color);padding:15px;min-width:200px;max-width:300px;font-size:12px;}
+#leaderboard h2{margin:0 0 10px 0;font-size:14px;}
+#leaderboard ol{margin:0;padding-left:20px;}
+#leaderboard li{margin:5px 0;word-break:break-word;}
+</style>
 </head>
 <body>
 <canvas id="particles"></canvas>
@@ -28,8 +35,16 @@
 <main>
 <h1>Snake</h1>
 <button id="start-btn">Start</button>
+<div id="game-container">
+<div>
 <canvas id="game" width="400" height="400" style="display:none"></canvas>
 <p>Time: <span id="time">0</span> | Score: <span id="score">1</span></p>
+</div>
+<div id="leaderboard" style="display:none">
+<h2>Top 10 High Scores</h2>
+<ol id="leaderboard-list"></ol>
+</div>
+</div>
 <p><strong>OBJECTIVE:</strong> Eat food to grow as long as possible.<br><strong>INPUT:</strong> Arrow keys.</p>
 </main>
 <footer><img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat"></footer>
@@ -37,46 +52,126 @@
 const c=document.getElementById('game');
 const x=c.getContext('2d');
 const startBtn=document.getElementById('start-btn');
+const leaderboard=document.getElementById('leaderboard');
+const leaderboardList=document.getElementById('leaderboard-list');
 let snake,dir,nextDir,food,running=false,time=0,loop,timer;
+
+function getHighScores(){
+  const scores=localStorage.getItem('snakeHighScores');
+  return scores?JSON.parse(scores):[
+    {nickname:'Player1',score:50,time:120},
+    {nickname:'Player2',score:45,time:110},
+    {nickname:'Player3',score:40,time:100},
+    {nickname:'Player4',score:35,time:90},
+    {nickname:'Player5',score:30,time:80},
+    {nickname:'Player6',score:25,time:70},
+    {nickname:'Player7',score:20,time:60},
+    {nickname:'Player8',score:15,time:50},
+    {nickname:'Player9',score:10,time:40},
+    {nickname:'Player10',score:5,time:30}
+  ];
+}
+
+function saveHighScores(scores){
+  localStorage.setItem('snakeHighScores',JSON.stringify(scores));
+}
+
+function updateLeaderboard(){
+  const scores=getHighScores();
+  leaderboardList.innerHTML='';
+  scores.forEach((s,i)=>{
+    const li=document.createElement('li');
+    li.textContent=`${s.nickname}: ${s.score} (${s.time}s)`;
+    leaderboardList.appendChild(li);
+  });
+}
+
+function checkHighScore(score,time){
+  const scores=getHighScores();
+  const lowestScore=scores[scores.length-1];
+  if(score>lowestScore.score){
+    let nickname=prompt(`Congratulations! You made it to the top 10!\nYour score: ${score}\nEnter your nickname:`);
+    if(!nickname||nickname.trim()===''){
+      nickname='Anonymous';
+    }
+    nickname=nickname.trim().substring(0,20);
+    scores.push({nickname,score,time,date:new Date().toISOString()});
+    scores.sort((a,b)=>b.score-a.score);
+    scores.splice(10);
+    saveHighScores(scores);
+    updateLeaderboard();
+    return true;
+  }
+  return false;
+}
+
 function init(){
- snake=[[10,10]];dir=[1,0];nextDir=[1,0];food=[15,15];time=0;
- document.getElementById('score').textContent=snake.length;
- document.getElementById('time').textContent=time;
+  snake=[[10,10]];dir=[1,0];nextDir=[1,0];food=[15,15];time=0;
+  document.getElementById('score').textContent=snake.length;
+  document.getElementById('time').textContent=time;
 }
+
 function draw(){
- x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
- x.fillRect(0,0,400,400);
- x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-color');
- snake.forEach(([sx,sy])=>x.fillRect(sx*20,sy*20,18,18));
- x.fillRect(food[0]*20,food[1]*20,18,18);
+  x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
+  x.fillRect(0,0,400,400);
+  x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-color');
+  snake.forEach(([sx,sy])=>x.fillRect(sx*20,sy*20,18,18));
+  x.fillRect(food[0]*20,food[1]*20,18,18);
 }
+
 function step(){
- if(!running)return;
- dir=nextDir;
- const head=[snake[0][0]+dir[0],snake[0][1]+dir[1]];
- if(head[0]<0||head[0]>=20||head[1]<0||head[1]>=20||snake.some(s=>s[0]==head[0]&&s[1]==head[1])){
-  endGame();
-  return;
- }
- snake.unshift(head);
- if(head[0]==food[0]&&head[1]==food[1]){
-  food=[Math.floor(Math.random()*20),Math.floor(Math.random()*20)];
- }else{snake.pop();}
- document.getElementById('score').textContent=snake.length;
- draw();
+  if(!running)return;
+  dir=nextDir;
+  const head=[snake[0][0]+dir[0],snake[0][1]+dir[1]];
+  if(head[0]<0||head[0]>=20||head[1]<0||head[1]>=20||snake.some(s=>s[0]==head[0]&&s[1]==head[1])){
+    endGame();
+    return;
+  }
+  snake.unshift(head);
+  if(head[0]==food[0]&&head[1]==food[1]){
+    food=[Math.floor(Math.random()*20),Math.floor(Math.random()*20)];
+  }else{snake.pop();}
+  document.getElementById('score').textContent=snake.length;
+  draw();
 }
+
 document.addEventListener('keydown',e=>{
- if(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight'){
-  e.preventDefault();
- }
- if(e.key==='ArrowUp'&&dir[1]!==1)nextDir=[0,-1];
- if(e.key==='ArrowDown'&&dir[1]!==-1)nextDir=[0,1];
- if(e.key==='ArrowLeft'&&dir[0]!==1)nextDir=[-1,0];
- if(e.key==='ArrowRight'&&dir[0]!==-1)nextDir=[1,0];
+  if(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight'){
+    e.preventDefault();
+  }
+  if(e.key==='ArrowUp'&&dir[1]!==1)nextDir=[0,-1];
+  if(e.key==='ArrowDown'&&dir[1]!==-1)nextDir=[0,1];
+  if(e.key==='ArrowLeft'&&dir[0]!==1)nextDir=[-1,0];
+  if(e.key==='ArrowRight'&&dir[0]!==-1)nextDir=[1,0];
 });
+
 function tick(){if(running){time++;document.getElementById('time').textContent=time;}}
-function endGame(){running=false;clearInterval(loop);clearInterval(timer);alert('Game Over! Time: '+time+'s | Score: '+snake.length);startBtn.style.display='block';c.style.display='none';}
-startBtn.addEventListener('click',()=>{startBtn.style.display='none';c.style.display='block';init();running=true;loop=setInterval(step,200);timer=setInterval(tick,1000);});
+
+function endGame(){
+  running=false;
+  clearInterval(loop);
+  clearInterval(timer);
+  const finalScore=snake.length;
+  const finalTime=time;
+  checkHighScore(finalScore,finalTime);
+  alert('Game Over! Time: '+finalTime+'s | Score: '+finalScore);
+  startBtn.style.display='block';
+  c.style.display='none';
+}
+
+startBtn.addEventListener('click',()=>{
+  startBtn.style.display='none';
+  c.style.display='block';
+  leaderboard.style.display='block';
+  init();
+  running=true;
+  loop=setInterval(step,200);
+  timer=setInterval(tick,1000);
+});
+
+// Initialize leaderboard on page load
+updateLeaderboard();
+leaderboard.style.display='block';
 </script>
 </body>
 </html>

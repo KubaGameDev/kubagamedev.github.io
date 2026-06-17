@@ -1643,6 +1643,58 @@ select:focus-visible {
   font-size: 1.65rem;
 }
 
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  min-height: 60px;
+}
+
+.field-grid.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.character-card {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.character-card strong {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.character-card span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.action-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.action-grid button {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+.action-grid.game-over {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .sim-log {
   margin: 0;
   padding-left: 2rem;

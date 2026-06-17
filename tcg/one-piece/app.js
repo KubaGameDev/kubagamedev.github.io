@@ -136,6 +136,13 @@ const elements = {
   simPhase: document.getElementById("sim-phase"),
   simTurnNumber: document.getElementById("sim-turn-number"),
   simPlayerZones: document.getElementById("sim-player-zones"),
+  simPlayerField: document.getElementById("sim-player-field"),
+  simActions: document.getElementById("sim-actions"),
+  simDrawButton: document.getElementById("sim-draw-button"),
+  simDonButton: document.getElementById("sim-don-button"),
+  simPlayButton: document.getElementById("sim-play-button"),
+  simAttackButton: document.getElementById("sim-attack-button"),
+  simActionNote: document.getElementById("sim-action-note"),
   simLog: document.getElementById("sim-log"),
   playerDeckSourceSelect: document.getElementById("player-deck-source-select"),
   playerStarterDeckSelect: document.getElementById("player-starter-deck-select"),
@@ -555,17 +562,126 @@ function renderValidation() {
 
 function renderSimulation() {
   const game = state.game;
-  elements.passTurnButton.disabled = !game || state.playtest.simMode === "cpu-vs-cpu";
-  if (!game) return;
+  const isCpuVsCpu = state.playtest.simMode === "cpu-vs-cpu";
+  const isPlayerTurn = game && game.turn_player === "player";
+  
+  elements.passTurnButton.disabled = !game || isCpuVsCpu || !isPlayerTurn;
+  elements.simDrawButton.disabled = !game || !isPlayerTurn || game.phase !== "draw";
+  elements.simDonButton.disabled = !game || !isPlayerTurn;
+  elements.simPlayButton.disabled = !game || !isPlayerTurn;
+  elements.simAttackButton.disabled = !game || !isPlayerTurn;
+  
+  if (!game) {
+    elements.simPlayerField.className = "field-grid empty-state";
+    elements.simPlayerField.textContent = "No characters on field.";
+    elements.simActionNote.textContent = "Start a game to see available actions.";
+    return;
+  }
+  
+  if (game.winner) {
+    elements.simActionNote.textContent = `Game over! ${game.winner === "player" ? "Player" : "CPU"} wins!`;
+    elements.simActions.className = "action-grid game-over";
+  } else if (isCpuVsCpu) {
+    elements.simActionNote.textContent = "CPU vs CPU: simulation running automatically...";
+  } else if (isPlayerTurn) {
+    elements.simActionNote.textContent = `Your turn (Turn ${game.turn_number}, Phase: ${game.phase}). Choose an action.`;
+  } else {
+    elements.simActionNote.textContent = "CPU is thinking...";
+  }
+  
   elements.simTurnPlayer.textContent = game.turn_player || "—";
   elements.simPhase.textContent = game.phase || "—";
   elements.simTurnNumber.textContent = String(game.turn_number || "—");
+  
   const player = game.players?.player || {};
   elements.simPlayerZones.className = "zone-grid";
-  elements.simPlayerZones.innerHTML = ["hand", "life", "deck", "trash"].map((zone) => `
-    <div class="zone-card"><span>${zone}</span><strong>${(player[zone] || []).length}</strong></div>
+  elements.simPlayerZones.innerHTML = [
+    { key: "hand", label: "Hand" },
+    { key: "life", label: "Life" },
+    { key: "deck", label: "Deck" },
+    { key: "trash", label: "Trash" },
+  ].map(({ key, label }) => `
+    <div class="zone-card"><span>${label}</span><strong>${(player[key] || []).length}</strong></div>
   `).join("");
-  elements.simLog.innerHTML = (game.log || []).slice(-8).map((entry) => `<li>${escapeHtml(entry)}</li>`).join("");
+  
+  const donInfo = `<div class="zone-card"><span>DON!!</span><strong>${player.don_active || 0}/${player.don_total || 0}</strong></div>`;
+  elements.simPlayerZones.insertAdjacentHTML("beforeend", donInfo);
+  
+  // Render player field
+  const characters = player.characters || [];
+  if (!characters.length) {
+    elements.simPlayerField.className = "field-grid empty-state";
+    elements.simPlayerField.textContent = "No characters on field.";
+  } else {
+    elements.simPlayerField.className = "field-grid";
+    elements.simPlayerField.innerHTML = characters.map((char, i) => `
+      <div class="character-card" data-character-index="${i}">
+        <strong>${escapeHtml(char.card_name || "Unknown")}</strong>
+        <span>Cost: ${escapeHtml(char.cost || "0")} | Power: ${escapeHtml(char.power || "0")}</span>
+        <button class="button tertiary sim-attack-character" type="button" data-index="${i}" ${!isPlayerTurn ? "disabled" : ""}>Attack</button>
+      </div>
+    `).join("");
+    
+    elements.simPlayerField.querySelectorAll(".sim-attack-character").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        doAttack(parseInt(btn.dataset.index, 10), "player");
+      });
+    });
+  }
+  
+  elements.simLog.innerHTML = (game.log || []).slice(-12).map((entry) => `<li>${escapeHtml(entry)}</li>`).join("");
+}
+
+async function doDraw() {
+  if (!state.game || state.game.turn_player !== "player") return;
+  await doAction({ type: "draw", player: "player" });
+}
+
+async function doDon() {
+  if (!state.game || state.game.turn_player !== "player") return;
+  await doAction({ type: "don", player: "player", amount: 2 });
+}
+
+async function doPlay() {
+  if (!state.game || state.game.turn_player !== "player") return;
+  const player = state.game.players.player;
+  if (!player.hand || !player.hand.length) {
+    alert("No cards in hand to play.");
+    return;
+  }
+  const choices = player.hand.map((card, i) => `${i}: ${card.card_name || "Unknown"} (cost ${card.cost || 0})`).join("\n");
+  const input = prompt(`Choose a card to play (index):\n${choices}`);
+  if (input === null) return;
+  const index = parseInt(input, 10);
+  if (Number.isNaN(index) || index < 0 || index >= player.hand.length) {
+    alert("Invalid card index.");
+    return;
+  }
+  await doAction({ type: "play", player: "player", card_index: index });
+}
+
+async function doAttack(attackerIndex, target = "player", targetIndex = null) {
+  if (!state.game || state.game.turn_player !== "player") return;
+  await doAction({ type: "attack", player: "player", attacker_index: attackerIndex, target, target_index: targetIndex });
+}
+
+async function doAction(action) {
+  if (!USE_API || !state.game) return;
+  try {
+    const payload = await apiFetch("/api/sim/action", {
+      method: "POST",
+      body: JSON.stringify({ game: state.game, action, cpu_auto: state.playtest.simMode === "cpu-vs-cpu" }),
+    });
+    state.game = payload.game;
+    renderAll();
+    
+    if (state.playtest.simMode === "cpu-vs-cpu" && !state.game.winner) {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await doAction({ type: "pass", player: state.game.turn_player });
+    }
+  } catch (error) {
+    alert(`Action failed: ${error.message}`);
+  }
 }
 
 function renderPlaytest() {
@@ -972,7 +1088,44 @@ function wireEvents() {
   });
   elements.validateDeckButton.addEventListener("click", validateDeck);
   elements.startSimButton.addEventListener("click", startSimulation);
-  elements.passTurnButton.addEventListener("click", passTurn);
+  elements.passTurnButton.addEventListener("click", () => doAction({ type: "pass", player: state.game.turn_player }));
+  elements.simDrawButton.addEventListener("click", doDraw);
+  elements.simDonButton.addEventListener("click", doDon);
+  elements.simPlayButton.addEventListener("click", doPlay);
+  elements.simAttackButton.addEventListener("click", () => {
+    if (!state.game || state.game.turn_player !== "player") return;
+    const player = state.game.players.player;
+    if (!player.characters || !player.characters.length) {
+      alert("No characters on field to attack with.");
+      return;
+    }
+    const choices = player.characters.map((char, i) => `${i}: ${char.card_name || "Unknown"} (power ${char.power || 0})`).join("\n");
+    const input = prompt(`Choose attacker (index):\n${choices}`);
+    if (input === null) return;
+    const index = parseInt(input, 10);
+    if (Number.isNaN(index) || index < 0 || index >= player.characters.length) {
+      alert("Invalid character index.");
+      return;
+    }
+    const opponent = state.game.players.cpu;
+    if (!opponent.characters || !opponent.characters.length) {
+      doAttack(index, "player");
+    } else {
+      const targetChoices = opponent.characters.map((char, i) => `${i}: ${char.card_name || "Unknown"} (power ${char.power || 0})`).join("\n");
+      const targetInput = prompt(`Choose target (index) or leave empty for direct attack if blocked:\n${targetChoices}`);
+      if (targetInput === null) return;
+      if (targetInput === "") {
+        doAttack(index, "player");
+      } else {
+        const targetIndex = parseInt(targetInput, 10);
+        if (Number.isNaN(targetIndex) || targetIndex < 0 || targetIndex >= opponent.characters.length) {
+          alert("Invalid target index.");
+          return;
+        }
+        doAttack(index, "character", targetIndex);
+      }
+    }
+  });
   elements.playerDeckSourceSelect.addEventListener("change", () => {
     state.playtest.playerDeckSource = elements.playerDeckSourceSelect.value;
     state.playtest.playerDeck = null;

@@ -269,6 +269,24 @@
             <div id="sim-player-zones" class="zone-grid empty-state">Start a sim to see hand, life, deck, and trash counts.</div>
           </article>
           <article class="builder-card">
+            <h3>Player field</h3>
+            <div id="sim-player-field" class="field-grid empty-state">No characters on field.</div>
+          </article>
+        </div>
+
+        <div class="builder-grid two-column">
+          <article class="builder-card">
+            <h3>Actions</h3>
+            <div id="sim-actions" class="action-grid">
+              <button id="sim-draw-button" class="button secondary" type="button" disabled>Draw Card</button>
+              <button id="sim-don-button" class="button secondary" type="button" disabled>Activate DON!! (+2)</button>
+              <button id="sim-play-button" class="button secondary" type="button" disabled>Play Character</button>
+              <button id="sim-attack-button" class="button secondary" type="button" disabled>Attack</button>
+              <button id="pass-turn-button" class="button primary" type="button" disabled>Pass Turn</button>
+            </div>
+            <p id="sim-action-note" class="backend-status">Choose an action, or Pass Turn to end your turn.</p>
+          </article>
+          <article class="builder-card">
             <h3>Game log</h3>
             <ol id="sim-log" class="sim-log"><li>No game started yet.</li></ol>
           </article>

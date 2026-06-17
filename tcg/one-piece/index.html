@@ -193,7 +193,7 @@
           <div>
             <p class="eyebrow">Playtest Sim</p>
             <h2 id="playtest-heading">Rules-shell playtest</h2>
-            <p class="section-copy">Start a deterministic game using your deck. Current MVP supports setup, pass turn, and CPU v1 auto-pass.</p>
+            <p class="section-copy">Choose decks for Player and CPU, then start a simulation. Current MVP supports setup, pass turn, and CPU v1 auto-pass.</p>
           </div>
           <div class="hero-actions">
             <button id="start-sim-button" class="button primary" type="button">Start Sim</button>
@@ -201,10 +201,66 @@
           </div>
         </div>
 
-        <div class="deck-status-grid">
-          <article class="summary-card compact"><span class="summary-label">Turn Player</span><strong id="sim-turn-player">—</strong></article>
-          <article class="summary-card compact"><span class="summary-label">Phase</span><strong id="sim-phase">—</strong></article>
-          <article class="summary-card compact"><span class="summary-label">Turn</span><strong id="sim-turn-number">—</strong></article>
+        <div class="builder-grid two-column">
+          <article class="builder-card">
+            <h3>Player Deck</h3>
+            <div class="deck-add-row">
+              <label class="field"><span>Source</span>
+                <select id="player-deck-source-select">
+                  <option value="preset">Starter Preset</option>
+                  <option value="owned">Owned Collection</option>
+                </select>
+              </label>
+            </div>
+            <div id="player-preset-section">
+              <label class="field"><span>Starter preset</span><select id="player-starter-deck-select"></select></label>
+            </div>
+            <div id="player-owned-section" class="is-hidden">
+              <label class="field"><span>Leader</span><select id="player-leader-select"></select></label>
+              <p id="player-deck-summary" class="backend-status">No deck loaded.</p>
+            </div>
+          </article>
+          <article class="builder-card">
+            <h3>CPU Deck</h3>
+            <div class="deck-add-row">
+              <label class="field"><span>Source</span>
+                <select id="cpu-deck-source-select">
+                  <option value="preset">Starter Preset</option>
+                  <option value="owned">Owned Collection</option>
+                </select>
+              </label>
+            </div>
+            <div id="cpu-preset-section">
+              <label class="field"><span>Starter preset</span><select id="cpu-starter-deck-select"></select></label>
+            </div>
+            <div id="cpu-owned-section" class="is-hidden">
+              <label class="field"><span>Leader</span><select id="cpu-leader-select"></select></label>
+              <p id="cpu-deck-summary" class="backend-status">No deck loaded.</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="builder-grid two-column">
+          <article class="builder-card">
+            <div class="panel-header tight">
+              <h3>Simulation Mode</h3>
+            </div>
+            <label class="field"><span>Mode</span>
+              <select id="sim-mode-select">
+                <option value="player-vs-cpu">Player vs CPU</option>
+                <option value="cpu-vs-cpu">CPU vs CPU (Auto-sim)</option>
+              </select>
+            </label>
+            <p id="sim-mode-note" class="backend-status">Player vs CPU: you click Pass Turn. CPU vs CPU: runs automatically and shows the winner.</p>
+          </article>
+          <article class="builder-card">
+            <h3>Game Status</h3>
+            <div class="deck-status-grid">
+              <article class="summary-card compact"><span class="summary-label">Turn Player</span><strong id="sim-turn-player">—</strong></article>
+              <article class="summary-card compact"><span class="summary-label">Phase</span><strong id="sim-phase">—</strong></article>
+              <article class="summary-card compact"><span class="summary-label">Turn</span><strong id="sim-turn-number">—</strong></article>
+            </div>
+          </article>
         </div>
 
         <div class="builder-grid two-column">

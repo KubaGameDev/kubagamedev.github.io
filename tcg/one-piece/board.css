@@ -494,3 +494,246 @@ body {
   .center-bar { grid-template-columns: minmax(0, 1fr) 145px minmax(0, 1fr); }
   .game-log { max-height: 58px; }
 }
+
+/* ============================================
+   ABILITY RESOLUTION — BOARD HIGHLIGHTING
+   ============================================ */
+
+/* --- Source Card Highlight --- */
+.ability-source-pulse {
+  animation: abilitySourcePulse 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes abilitySourcePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 160, 255, 0.55); }
+  50%      { box-shadow: 0 0 0 6px rgba(0, 160, 255, 0.15); }
+}
+
+/* --- Valid Target Ring --- */
+.ability-target-valid {
+  position: relative;
+}
+.ability-target-valid::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--accent);       /* #ffd700 gold */
+  border-radius: 8px;
+  animation: abilityValidPulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes abilityValidPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.03); }
+}
+
+/* --- Selected Target Ring --- */
+.ability-target-selected {
+  position: relative;
+}
+.ability-target-selected::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 3px solid var(--success);      /* #4ade80 green */
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.45);
+  pointer-events: none;
+  z-index: 11;
+}
+
+/* --- Invalid / Dimmed Targets --- */
+.ability-dimmed {
+  opacity: 0.35;
+  filter: grayscale(0.6);
+  transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+/* Disable interactions on dimmed elements during target selection */
+.ability-dimmed,
+.board.target-select-active .hand-zone,
+.board.target-select-active .leader-zone:not(.ability-target-valid):not(.ability-target-selected),
+.board.target-select-active .char-slot:not(.ability-target-valid):not(.ability-target-selected) {
+  pointer-events: none !important;
+}
+
+/* --- Instruction Banner --- */
+.ability-banner {
+  position: fixed;
+  top: 42px;                            /* below top-bar */
+  left: 0;
+  right: 0;
+  padding: 0.55rem 1rem;
+  background: rgba(11, 29, 46, 0.92);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.35);
+  color: var(--text);
+  font-size: clamp(0.82rem, 1.1vw, 0.98rem);
+  text-align: center;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.ability-banner .banner-rule {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.ability-banner .banner-cancel {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--slot-border);
+  color: var(--muted);
+  padding: 0.25rem 0.6rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.ability-banner .banner-cancel:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* --- Toast --- */
+.ability-toast {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: min(320px, 86vw);
+  background: #10263a;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  z-index: 300;
+  cursor: pointer;
+  animation: toastSlideIn 0.25s ease-out;
+}
+
+@keyframes toastSlideIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.ability-toast .toast-art {
+  width: 46px;
+  height: 64px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.ability-toast .toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ability-toast .toast-title {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.ability-toast .toast-text {
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+/* --- Decision & Abort Modals --- */
+.ability-decision-modal,
+.ability-abort-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: grid;
+  place-items: center;
+}
+
+.ability-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.ability-modal-panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(140px, 28vh) minmax(200px, 320px);
+  gap: 0.9rem;
+  align-items: start;
+  max-width: min(90vw, 720px);
+  max-height: 88vh;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #10263a;
+  border: 1px solid var(--slot-border);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6);
+  overflow: auto;
+}
+
+.ability-modal-art {
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+}
+
+.ability-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.ability-modal-title {
+  color: var(--accent);
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.ability-modal-rule {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.ability-modal-effect {
+  color: var(--text);
+  font-size: 0.92rem;
+  margin: 0.25rem 0 0;
+}
+
+.ability-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+/* Disable board interactions during decision / auto_notify */
+body.ability-modal-open .board {
+  pointer-events: none;
+}
+
+/* Responsive: stack art above text on narrow screens */
+@media (max-width: 640px) {
+  .ability-modal-panel {
+    grid-template-columns: 1fr;
+    max-width: 92vw;
+  }
+  .ability-modal-art {
+    width: 140px;
+    justify-self: center;
+  }
+}

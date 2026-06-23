@@ -32,6 +32,304 @@ let state = null;
 let actionInFlight = false;
 let gizmoState = null; // {fromEl, fromCard, fromType, fromIndex}
 
+/* ============================================================
+   ABILITY RESOLUTION SYSTEM
+   ============================================================ */
+window.abilityState = {
+  mode: 'idle',
+  sourceCard: null,
+  abilityType: null,
+  pendingAction: null,
+  validTargets: [],
+  selectedTargets: [],
+  chainQueue: [],
+  toastTimer: null,
+  blockerUsedThisTurn: new Set(),
+};
+
+function closeCardModal() {
+  const existing = document.querySelector('.card-modal');
+  if (existing) existing.remove();
+}
+
+function findCardElement(zone, index) {
+  // Map backend zone descriptors to DOM data-zone values
+  let selector = '';
+  if (zone === 'leader' || zone === 'player-leader') selector = '[data-zone="player-leader"]';
+  else if (zone === 'opponent-leader') selector = '[data-zone="opponent-leader"]';
+  else if (zone === 'character' || zone === 'player-char') selector = `[data-zone="player-char-${index}"]`;
+  else if (zone === 'opponent-char') selector = `[data-zone="opponent-char-${index}"]`;
+  else if (zone.startsWith('player-char-') || zone.startsWith('opponent-char-') || zone === 'player-leader' || zone === 'opponent-leader') {
+    selector = `[data-zone="${zone}"]`;
+  }
+  if (selector) {
+    const slot = document.querySelector(selector);
+    if (slot) return slot.querySelector('.card-wrapper');
+  }
+  // Fallback by data-slot
+  const slot2 = document.querySelector(`[data-slot="${zone}"]`);
+  if (slot2) return slot2.querySelector('.card-wrapper');
+  return null;
+}
+
+function showAbilityToast(ability) {
+  const toasts = document.querySelectorAll('.ability-toast');
+  if (toasts.length >= 3) toasts[0].remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'ability-toast';
+  const imgSrc = ability.card_code ? getImageUrl({ card_code: ability.card_code, image_url: '' }) : '';
+  const typeLabel = ability.type ? ability.type.replace(/_/g, ' ').toUpperCase() : 'ABILITY';
+  toast.innerHTML = `
+    <img class="toast-art" src="${escapeHtml(imgSrc)}" alt="" onerror="this.style.display='none'"/>
+    <div class="toast-body">
+      <span class="toast-title">${escapeHtml(`[${typeLabel}] — ${ability.card_name}`)}</span>
+      <span class="toast-text">${escapeHtml(ability.teaching_copy || ability.rule_text || '')}</span>
+    </div>
+  `;
+
+  const timer = setTimeout(() => toast.remove(), 2500);
+  toast.addEventListener('click', () => { clearTimeout(timer); toast.remove(); });
+  document.body.appendChild(toast);
+}
+
+function showAbilityDecision(ability) {
+  closeCardModal();
+  document.body.classList.add('ability-modal-open');
+  abilityState.mode = 'decision';
+  abilityState.pendingAction = ability;
+
+  const modal = document.createElement('div');
+  modal.className = 'ability-decision-modal';
+  const imgSrc = ability.card_code ? getImageUrl({ card_code: ability.card_code, image_url: '' }) : '';
+  const typeLabel = ability.type ? ability.type.replace(/_/g, ' ').toUpperCase() : 'ABILITY';
+
+  modal.innerHTML = `
+    <div class="ability-modal-backdrop"></div>
+    <div class="ability-modal-panel">
+      <img class="ability-modal-art" src="${escapeHtml(imgSrc)}" alt="" onerror="this.style.display='none'"/>
+      <div class="ability-modal-body">
+        <h3 class="ability-modal-title">${escapeHtml(`[${typeLabel}] — ${ability.card_name}`)}</h3>
+        <p class="ability-modal-rule">${escapeHtml(ability.teaching_copy || '')}</p>
+        <p class="ability-modal-effect">${escapeHtml(ability.rule_text || '')}</p>
+        <div class="ability-modal-actions">
+          <button class="btn primary" data-choice="confirm">Confirm</button>
+          <button class="btn" data-choice="skip">Skip</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  modal.addEventListener('click', (ev) => {
+    if (ev.target.classList.contains('ability-modal-backdrop')) {
+      modal.remove();
+      document.body.classList.remove('ability-modal-open');
+      sendAbilitySkip(ability.ability_id);
+      return;
+    }
+    const btn = ev.target.closest('[data-choice]');
+    if (!btn) return;
+    const choice = btn.dataset.choice;
+    modal.remove();
+    document.body.classList.remove('ability-modal-open');
+    if (choice === 'confirm') {
+      if (ability.needs_target) {
+        enterTargetSelect({
+          card_code: ability.card_code,
+          card_name: ability.card_name,
+          source: ability.source,
+          index: ability.source_index,
+          abilityType: ability.type,
+          ruleText: ability.rule_text
+        }, ability.valid_targets || []);
+      } else {
+        sendAbilityResolve(ability.ability_id, 'confirm', []);
+      }
+    } else {
+      sendAbilitySkip(ability.ability_id);
+    }
+  });
+
+  document.body.appendChild(modal);
+}
+
+function showAbilityAbort(title, body, onClose) {
+  closeCardModal();
+  document.body.classList.add('ability-modal-open');
+  const modal = document.createElement('div');
+  modal.className = 'ability-abort-modal';
+  modal.innerHTML = `
+    <div class="ability-modal-backdrop"></div>
+    <div class="ability-modal-panel" style="grid-template-columns: 1fr;">
+      <div class="ability-modal-body">
+        <h3 class="ability-modal-title">${escapeHtml(title)}</h3>
+        <p class="ability-modal-effect">${escapeHtml(body)}</p>
+        <div class="ability-modal-actions">
+          <button class="btn primary" data-choice="ok">OK</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', (ev) => {
+    if (ev.target.classList.contains('ability-modal-backdrop') || ev.target.closest('[data-choice="ok"]')) {
+      modal.remove();
+      document.body.classList.remove('ability-modal-open');
+      if (onClose) onClose();
+      else {
+        if (abilityState.mode === 'target_select') {
+          exitTargetSelect(true);
+        } else {
+          abilityState.mode = 'idle';
+          processChainQueue();
+        }
+      }
+    }
+  });
+  document.body.appendChild(modal);
+}
+
+function showAbilityBanner(title, ruleText, showCancel) {
+  hideAbilityBanner();
+  const banner = document.createElement('div');
+  banner.className = 'ability-banner';
+  banner.id = 'ability-banner';
+  banner.innerHTML = `
+    <span class="banner-rule">${escapeHtml(title)}</span>
+    <span>${escapeHtml(ruleText || '')}</span>
+    ${showCancel ? '<button class="banner-cancel" id="ability-banner-cancel">Cancel</button>' : ''}
+  `;
+  document.body.appendChild(banner);
+  if (showCancel) {
+    banner.querySelector('#ability-banner-cancel').addEventListener('click', () => {
+      exitTargetSelect(true);
+    });
+  }
+}
+
+function updateBannerConfirm() {
+  const banner = document.getElementById('ability-banner');
+  if (!banner) return;
+  let confirmBtn = banner.querySelector('#ability-banner-confirm');
+  const hasSelection = abilityState.selectedTargets.length > 0;
+  if (hasSelection && !confirmBtn) {
+    confirmBtn = document.createElement('button');
+    confirmBtn.id = 'ability-banner-confirm';
+    confirmBtn.className = 'btn primary';
+    confirmBtn.style.cssText = 'margin-left:0.5rem;padding:0.25rem 0.6rem;border-radius:5px;font-size:0.82rem;';
+    confirmBtn.textContent = 'Confirm';
+    confirmBtn.addEventListener('click', () => {
+      const targets = abilityState.selectedTargets;
+      const ability = abilityState.pendingAction;
+      exitTargetSelect(false);
+      if (ability) {
+        sendAbilityResolve(ability.ability_id, 'confirm', targets);
+      }
+    });
+    banner.appendChild(confirmBtn);
+  } else if (!hasSelection && confirmBtn) {
+    confirmBtn.remove();
+  }
+}
+
+function hideAbilityBanner() {
+  const existing = document.getElementById('ability-banner');
+  if (existing) existing.remove();
+}
+
+function enterTargetSelect(sourceCard, validTargets) {
+  abilityState.mode = 'target_select';
+  abilityState.sourceCard = sourceCard;
+  abilityState.validTargets = validTargets;
+  abilityState.selectedTargets = [];
+  document.body.classList.add('target-select-active');
+
+  const sourceEl = findCardElement(sourceCard.source, sourceCard.index);
+  if (sourceEl) sourceEl.classList.add('ability-source-pulse');
+
+  validTargets.forEach(t => {
+    const el = findCardElement(t.zone, t.index);
+    if (el) el.classList.add('ability-target-valid');
+  });
+
+  document.querySelectorAll('.card-wrapper').forEach(el => {
+    if (!el.classList.contains('ability-target-valid') && el !== sourceEl) {
+      el.classList.add('ability-dimmed');
+    }
+  });
+
+  const typeLabel = sourceCard.abilityType ? sourceCard.abilityType.replace(/_/g, ' ').toUpperCase() : 'ABILITY';
+  showAbilityBanner(
+    `Select a target for ${sourceCard.card_name}`,
+    `[${typeLabel}] — ${sourceCard.ruleText || ''}`,
+    true
+  );
+}
+
+function exitTargetSelect(abort = false) {
+  abilityState.mode = 'idle';
+  document.body.classList.remove('target-select-active');
+  document.querySelectorAll('.ability-source-pulse, .ability-target-valid, .ability-target-selected, .ability-dimmed')
+    .forEach(el => el.classList.remove('ability-source-pulse', 'ability-target-valid', 'ability-target-selected', 'ability-dimmed'));
+  hideAbilityBanner();
+
+  if (abort && abilityState.pendingAction) {
+    sendAbilityAbort(abilityState.pendingAction.ability_id);
+  }
+  abilityState.pendingAction = null;
+  abilityState.sourceCard = null;
+  abilityState.validTargets = [];
+  abilityState.selectedTargets = [];
+  processChainQueue();
+}
+
+function sendAbilityResolve(abilityId, choice, targets) {
+  sendAction({ type: 'ability_resolve', player: viewer, ability_id: abilityId, choice, targets });
+}
+
+function sendAbilitySkip(abilityId) {
+  sendAction({ type: 'ability_skip', player: viewer, ability_id: abilityId });
+}
+
+function sendAbilityAbort(abilityId) {
+  sendAction({ type: 'ability_abort', player: viewer, ability_id: abilityId });
+}
+
+function processChainQueue() {
+  if (!state) return;
+  const pending = state.pending_abilities || [];
+  if (abilityState.mode !== 'idle') return;
+  // Only process abilities for the viewer; let backend/cpu handle theirs via auto-step
+  const mine = pending.filter(a => a.player === viewer);
+  if (mine.length === 0) return;
+  const ability = mine[0];
+  resolveAbility(ability);
+}
+
+function resolveAbility(ability) {
+  if (ability.needs_choice) {
+    showAbilityDecision(ability);
+  } else if (ability.needs_target) {
+    if (!ability.valid_targets || ability.valid_targets.length === 0) {
+      showAbilityAbort('No Valid Targets', `There are no valid targets for ${ability.card_name}'s ability right now. The ability will be skipped.`, () => {
+        sendAbilitySkip(ability.ability_id);
+      });
+    } else {
+      abilityState.pendingAction = ability;
+      enterTargetSelect({
+        card_code: ability.card_code,
+        card_name: ability.card_name,
+        source: ability.source,
+        index: ability.source_index,
+        abilityType: ability.type,
+        ruleText: ability.rule_text
+      }, ability.valid_targets);
+    }
+  } else {
+    showAbilityToast(ability);
+    sendAbilityResolve(ability.ability_id, 'confirm', []);
+  }
+}
+
 const els = {
   loading: document.getElementById("loading"),
   backBtn: document.getElementById("back-btn"),
@@ -113,9 +411,44 @@ function cardEl(card, opts = {}) {
   });
   wrapper.addEventListener("click", (ev) => {
     if (wrapper.dataset.wasDragged === "1") return;
+    // Target selection mode takes priority
+    if (abilityState.mode === 'target_select') {
+      ev.stopPropagation();
+      if (wrapper.classList.contains('ability-target-valid')) {
+        const zone = wrapper.closest('[data-zone]')?.dataset.zone || '';
+        const idxStr = wrapper.closest('[data-zone]')?.dataset.slot?.split('-').pop() ?? wrapper.dataset.index;
+        const idx = parseInt(idxStr, 10);
+        if (isNaN(idx)) {
+          // Leader target (no index)
+          const already = abilityState.selectedTargets.find(t => t.zone === zone);
+          if (already) {
+            abilityState.selectedTargets = abilityState.selectedTargets.filter(t => t.zone !== zone);
+            wrapper.classList.remove('ability-target-selected');
+          } else {
+            abilityState.selectedTargets.push({ zone, index: null });
+            wrapper.classList.add('ability-target-selected');
+          }
+        } else {
+          const already = abilityState.selectedTargets.find(t => t.zone === zone && t.index === idx);
+          if (already) {
+            abilityState.selectedTargets = abilityState.selectedTargets.filter(t => !(t.zone === zone && t.index === idx));
+            wrapper.classList.remove('ability-target-selected');
+          } else {
+            abilityState.selectedTargets.push({ zone, index: idx });
+            wrapper.classList.add('ability-target-selected');
+          }
+        }
+        updateBannerConfirm();
+      }
+      return;
+    }
     if (gizmoState) {
       ev.stopPropagation();
       return onGizmoTargetClick(wrapper, card, opts);
+    }
+    if (abilityState.mode !== 'idle') {
+      ev.stopPropagation();
+      return; // Block card modal during ability resolution
     }
     ev.stopPropagation();
     openCardModal(card, opts);
@@ -156,7 +489,11 @@ function openCardModal(card, context = {}) {
       buttonsHtml += `<button class="btn danger modal-action" data-action="attack" data-target="${context.source}" data-index="${context.index ?? 0}">Attack</button>`;
     }
     if (card.effect && card.effect.includes("[Activate: Main]")) {
-      buttonsHtml += `<button class="btn modal-action" data-action="activate">Activate Ability</button>`;
+      const phaseOk = state && state.phase === "main" && state.turn_player === viewer && !isCpuVsCpu;
+      const used = abilityState.blockerUsedThisTurn.has(card.card_code || '');
+      if (phaseOk && !used) {
+        buttonsHtml += `<button class="btn modal-action" data-action="activate">Activate Ability</button>`;
+      }
     }
   }
 
@@ -309,9 +646,28 @@ document.addEventListener("mousemove", (ev) => {
 });
 document.addEventListener("keydown", (ev) => {
   if (ev.key === "Escape" && gizmoState) clearGizmo();
+  // Global Escape for ability resolution
+  if (ev.key === "Escape") {
+    if (abilityState.mode === 'decision') {
+      const modal = document.querySelector('.ability-decision-modal');
+      if (modal) modal.remove();
+      document.body.classList.remove('ability-modal-open');
+      const ability = abilityState.pendingAction;
+      abilityState.mode = 'idle';
+      abilityState.pendingAction = null;
+      if (ability) sendAbilitySkip(ability.ability_id);
+      processChainQueue();
+    } else if (abilityState.mode === 'target_select') {
+      exitTargetSelect(true);
+    }
+  }
 });
 
 function onDragStart(ev) {
+  if (abilityState.mode !== 'idle') {
+    ev.preventDefault();
+    return;
+  }
   const wrapper = ev.currentTarget;
   wrapper.classList.add("dragging");
   ev.dataTransfer.setData("text/plain", JSON.stringify({
@@ -323,6 +679,9 @@ function onDragStart(ev) {
 }
 
 function allowDrop(ev) {
+  if (abilityState.mode !== 'idle') {
+    return;
+  }
   ev.preventDefault();
   const target = ev.currentTarget;
   if (target.classList.contains("char-slot") || target.classList.contains("leader-zone") || target.classList.contains("don-zone")) {
@@ -490,6 +849,11 @@ function render() {
   renderLog();
   renderPhaseBtn();
 
+  // Disable normal interactions during ability resolution
+  const isResolving = abilityState.mode !== 'idle';
+  els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main" || isResolving;
+  document.body.classList.toggle('ability-modal-open', isResolving);
+
   if (state.phase === "mulligan") {
     const needMulligan = !state.mulligan_done?.[meKey];
     els.mulliganPanel.classList.toggle("active", needMulligan);
@@ -499,13 +863,16 @@ function render() {
       : "Waiting for opponent mulligan...";
   } else {
     els.mulliganPanel.classList.remove("active");
-    els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main";
+    els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main" || isResolving;
   }
 
   if (state.winner) {
     setMessage(`🎉 ${state.winner === "player" ? "Player" : "CPU"} wins!`);
     els.passBtn.disabled = true;
   }
+
+  // Chain queue processing
+  processChainQueue();
 }
 
 function renderPhaseBtn() {

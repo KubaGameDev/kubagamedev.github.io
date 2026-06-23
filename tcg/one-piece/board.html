@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OPTCG Playtest Board</title>
+  <link rel="stylesheet" href="board.css?v=actions-don-cardzoom-3" />
+</head>
+<body>
+  <div id="loading" class="loading-overlay">Loading board...</div>
+
+  <header class="top-bar">
+    <button id="back-btn" class="btn">← Back</button>
+    <div class="game-title">OPTCG Playtest Board</div>
+    <div class="turn-info">
+      Turn <span id="turn-number">1</span> — <span id="turn-player">Player</span> — <span id="phase">Mulligan</span>
+    </div>
+  </header>
+
+  <main class="board">
+    <!-- Opponent side -->
+    <section class="side opponent-side" id="opponent-side">
+      <div class="opponent-piles piles">
+        <div class="zone deck-zone" data-zone="opponent-deck">
+          <span class="zone-label">Deck</span>
+          <span class="zone-count" id="opponent-deck-count">0</span>
+        </div>
+        <div class="zone life-zone" data-zone="opponent-life">
+          <span class="zone-label">Life</span>
+          <span class="zone-count" id="opponent-life-count">0</span>
+        </div>
+        <div class="zone don-zone" data-zone="opponent-don">
+          <span class="zone-label">DON!!</span>
+          <span class="zone-count" id="opponent-don-count">0</span>
+        </div>
+        <div class="zone trash-zone" data-zone="opponent-trash">
+          <span class="zone-label">Trash</span>
+          <span class="zone-count" id="opponent-trash-count">0</span>
+        </div>
+      </div>
+      <div class="character-row" id="opponent-characters">
+        <div class="char-slot" data-slot="opponent-char-0"></div>
+        <div class="char-slot" data-slot="opponent-char-1"></div>
+        <div class="char-slot" data-slot="opponent-char-2"></div>
+        <div class="char-slot" data-slot="opponent-char-3"></div>
+        <div class="char-slot" data-slot="opponent-char-4"></div>
+      </div>
+      <div class="leader-zone" id="opponent-leader" data-zone="opponent-leader"></div>
+      <div class="hand-zone" id="opponent-hand">
+        <span class="zone-label">Hand</span>
+        <span class="zone-count" id="opponent-hand-count">0</span>
+      </div>
+      <div class="don-area" id="opponent-don-area"></div>
+    </section>
+
+    <!-- Center info -->
+    <section class="center-bar">
+      <div id="game-message" class="game-message">Drag a card to play, attach, or attack.</div>
+      <div id="mulligan-panel" class="mulligan-panel">
+        <p id="mulligan-text">Keep or mulligan your opening hand?</p>
+        <div class="mulligan-actions">
+          <button id="mulligan-keep" class="btn">Keep</button>
+          <button id="mulligan-redraw" class="btn primary">Mulligan</button>
+        </div>
+      </div>
+      <div class="center-controls">
+        <button id="phase-btn" class="btn primary" style="display:none;">Next Phase</button>
+        <button id="pass-btn" class="btn" disabled>Pass / End Turn</button>
+      </div>
+      <div id="log" class="game-log"></div>
+    </section>
+
+    <!-- Player side -->
+    <section class="side player-side" id="player-side">
+      <div class="hand-zone" id="player-hand"></div>
+      <div class="don-area" id="player-don-area"></div>
+      <div class="leader-zone" id="player-leader" data-zone="player-leader"></div>
+      <div class="character-row" id="player-characters">
+        <div class="char-slot" data-slot="player-char-0"></div>
+        <div class="char-slot" data-slot="player-char-1"></div>
+        <div class="char-slot" data-slot="player-char-2"></div>
+        <div class="char-slot" data-slot="player-char-3"></div>
+        <div class="char-slot" data-slot="player-char-4"></div>
+      </div>
+      <div class="piles">
+        <div class="zone deck-zone" data-zone="player-deck">
+          <span class="zone-label">Deck</span>
+          <span class="zone-count" id="player-deck-count">0</span>
+        </div>
+        <div class="zone life-zone" data-zone="player-life">
+          <span class="zone-label">Life</span>
+          <span class="zone-count" id="player-life-count">0</span>
+        </div>
+        <div class="zone don-zone" data-zone="player-don" draggable="true">
+          <span class="zone-label">DON!!</span>
+          <span class="zone-count" id="player-don-count">0</span>
+        </div>
+        <div class="zone trash-zone" data-zone="player-trash">
+          <span class="zone-label">Trash</span>
+          <span class="zone-count" id="player-trash-count">0</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="board.js?v=don-ability-fixes-1"></script>
+</body>
+</html>

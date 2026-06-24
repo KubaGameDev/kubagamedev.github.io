@@ -446,6 +446,18 @@ function cardEl(card, opts = {}) {
     ov.textContent = opts.overlay;
     wrapper.appendChild(ov);
   }
+  // Effective power overlay when different from printed power
+  const basePower = parseInt(card.power, 10) || 0;
+  const attachedBoost = (card.attached_don?.length || 0) * 1000;
+  const bonusPower = card.bonus_power || 0;
+  const battleBoost = card.battle_power_boost || 0;
+  const effectivePower = basePower + attachedBoost + bonusPower + battleBoost;
+  if (effectivePower !== basePower && basePower > 0) {
+    const powerBadge = document.createElement("span");
+    powerBadge.className = "power-badge";
+    powerBadge.textContent = effectivePower;
+    wrapper.appendChild(powerBadge);
+  }
   // Attached DON pips under card
   const attachedDon = card.attached_don || [];
   if (attachedDon.length > 0) {

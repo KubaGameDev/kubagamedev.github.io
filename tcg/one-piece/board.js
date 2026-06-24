@@ -660,11 +660,17 @@ function openCardModal(card, context = {}) {
     if (context.source === "hand" && (card.card_type || "").toUpperCase() === "CHARACTER") {
       buttonsHtml += `<button class="btn primary modal-action" data-action="play" data-index="${context.index ?? 0}">Play</button>`;
     }
+    if (context.source === "hand" && (card.card_type || "").toUpperCase() === "STAGE") {
+      buttonsHtml += `<button class="btn primary modal-action" data-action="play" data-index="${context.index ?? 0}">Play Stage</button>`;
+    }
     if ((context.source === "character" || context.source === "leader") && me && me.don_active > 0) {
       buttonsHtml += `<button class="btn primary modal-action" data-action="attach" data-target="${context.source}" data-index="${context.index ?? 0}">+1 DON!!</button>`;
     }
     if ((context.source === "character" || context.source === "leader") && canAttackFromContext(card, context)) {
       buttonsHtml += `<button class="btn danger modal-action" data-action="attack" data-target="${context.source}" data-index="${context.index ?? 0}">Attack</button>`;
+    }
+    if (context.source === "stage" && isMain) {
+      buttonsHtml += `<button class="btn modal-action" data-action="rest-stage">Rest Stage</button>`;
     }
     if (card.effect && card.effect.includes("[Activate: Main]")) {
       const phaseOk = state && state.phase === "main" && state.turn_player === viewer && !isCpuVsCpu;
@@ -713,6 +719,8 @@ function openCardModal(card, context = {}) {
       const source = context.source;
       const idx = source === "character" ? parseInt(context.index ?? "0", 10) : undefined;
       sendAction({ type: "activate_ability", player: viewer, card_source: source, ...(idx !== undefined ? { card_index: idx } : {}) });
+    } else if (action === "rest-stage") {
+      sendAction({ type: "rest_stage", player: viewer });
     }
     modal.remove();
   });
@@ -1023,6 +1031,8 @@ function render() {
   renderPiles(opp, "opponent");
   renderLeader(me, "player");
   renderLeader(opp, "opponent");
+  renderStage(me, "player");
+  renderStage(opp, "opponent");
   renderCharacters(me, "player");
   renderCharacters(opp, "opponent");
   renderHand(me, "player-hand", true);
@@ -1151,6 +1161,24 @@ function renderLeader(player, side) {
       showTrash(p.trash || [], `${side === "player" ? "Player" : "CPU"} Trash`);
     });
   }
+}
+
+function renderStage(player, side) {
+  const zone = document.getElementById(`${side}-stage`);
+  if (!zone) return;
+  zone.innerHTML = "";
+  const stages = player.stages || [];
+  if (stages.length > 0) {
+    const stageData = stages[0];
+    const isMine = side === "player" && !isCpuVsCpu;
+    const stageCard = cardEl(stageData, {
+      className: "stage-card",
+      draggable: false,
+      source: isMine ? "stage" : "opponent-stage"
+    });
+    zone.appendChild(stageCard);
+  }
+  zone.dataset.zone = `${side}-stage`;
 }
 
 function renderCharacters(player, side) {

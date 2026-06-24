@@ -118,6 +118,7 @@ body {
 .opponent-side .character-row { grid-area: characters; }
 .opponent-side .leader-zone { grid-area: leader; }
 .opponent-side .hand-zone { grid-area: hand; }
+.opponent-side .stage-zone { grid-area: stage; }
 
 .player-side .hand-zone { grid-area: hand; }
 .player-side .don-area { grid-area: don; }
@@ -125,6 +126,7 @@ body {
 .player-side .leader-zone { grid-area: leader; }
 .player-side .character-row { grid-area: characters; }
 .player-side .piles { grid-area: piles; }
+.player-side .stage-zone { grid-area: stage; }
 
 .piles {
   display: flex;
@@ -200,6 +202,33 @@ body {
 }
 
 .leader-zone.drop-hover { background: rgba(255, 215, 0, 0.1); }
+
+/* Stage zone — landscape orientation (same aspect as Leader but visually distinct) */
+.stage-zone {
+  width: var(--leader-w);
+  min-width: var(--leader-w);
+  height: calc(var(--leader-h) + 18px);
+  min-height: calc(var(--leader-h) + 18px);
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s;
+  overflow: visible;
+}
+
+.stage-zone:empty::before {
+  content: "Stage";
+  font-size: clamp(0.6rem, 1vw, 0.8rem);
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.stage-zone .card {
+  width: var(--leader-w);
+  height: var(--leader-h);
+}
 
 .hand-zone {
   width: clamp(112px, 11vw, 170px);

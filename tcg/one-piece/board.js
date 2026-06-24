@@ -43,6 +43,7 @@ window.abilityState = {
   validTargets: [],
   selectedTargets: [],
   selectedAmount: null,
+  selectedRevealIndices: [],
   chainQueue: [],
   toastTimer: null,
   blockerUsedThisTurn: new Set(),
@@ -247,6 +248,103 @@ function showAbilityAbort(title, body, onClose) {
   document.body.appendChild(modal);
 }
 
+function showRevealedCardSelector(ability) {
+  closeCardModal();
+  document.body.classList.add('ability-modal-open');
+  abilityState.mode = 'reveal_select';
+  abilityState.pendingAction = ability;
+  abilityState.selectedRevealIndices = [];
+
+  const revealed = ability.revealed_cards || [];
+  const maxSelect = ability.revealed_select_count || 1;
+
+  const modal = document.createElement('div');
+  modal.className = 'ability-decision-modal';
+  const typeLabel = ability.type ? ability.type.replace(/_/g, ' ').toUpperCase() : 'ABILITY';
+
+  const cardsHtml = revealed.map((card, idx) => {
+    const imgSrc = getImageUrl(card);
+    return `
+      <div class="revealed-card-option" data-index="${idx}" role="button" tabindex="0"
+           title="Click to select ${escapeHtml(card.card_name || card.card_code)}">
+        <img class="revealed-card-img" src="${escapeHtml(imgSrc)}" alt="${escapeHtml(card.card_name || '')}"
+             onerror="this.style.display='none'">
+        <div class="revealed-card-name">${escapeHtml(card.card_name || card.card_code)}</div>
+      </div>
+    `;
+  }).join('');
+
+  modal.innerHTML = `
+    <div class="ability-modal-backdrop"></div>
+    <div class="ability-modal-panel revealed-panel">
+      <h3 class="ability-modal-title">${escapeHtml(`[${typeLabel}] — ${ability.card_name}`)}</h3>
+      <p class="ability-modal-rule">Choose up to ${maxSelect} card(s) to add to your hand.</p>
+      <div class="revealed-card-grid">${cardsHtml}</div>
+      <div class="ability-modal-actions">
+        <button class="btn primary" id="revealed-confirm" disabled>Confirm (0/${maxSelect})</button>
+        <button class="btn" id="revealed-skip">Add None (Place All Bottom)</button>
+        <button class="btn" id="revealed-abort">Abort</button>
+      </div>
+    </div>
+  `;
+
+  const updateConfirm = () => {
+    const confirmBtn = modal.querySelector('#revealed-confirm');
+    const count = abilityState.selectedRevealIndices.length;
+    confirmBtn.textContent = `Confirm (${count}/${maxSelect})`;
+    confirmBtn.disabled = count === 0;
+  };
+
+  modal.querySelectorAll('.revealed-card-option').forEach((el) => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.index, 10);
+      const selected = abilityState.selectedRevealIndices;
+      if (selected.includes(idx)) {
+        abilityState.selectedRevealIndices = selected.filter((i) => i !== idx);
+        el.classList.remove('selected');
+      } else if (selected.length < maxSelect) {
+        abilityState.selectedRevealIndices = [...selected, idx];
+        el.classList.add('selected');
+      }
+      updateConfirm();
+    });
+  });
+
+  modal.addEventListener('click', (ev) => {
+    if (ev.target.classList.contains('ability-modal-backdrop')) {
+      modal.remove();
+      document.body.classList.remove('ability-modal-open');
+      sendAbilityAbort(ability.ability_id);
+      return;
+    }
+    if (ev.target.id === 'revealed-skip') {
+      modal.remove();
+      document.body.classList.remove('ability-modal-open');
+      sendAbilityResolve(ability.ability_id, 'confirm', []);
+      return;
+    }
+    if (ev.target.id === 'revealed-abort') {
+      modal.remove();
+      document.body.classList.remove('ability-modal-open');
+      sendAbilityAbort(ability.ability_id);
+      return;
+    }
+    if (ev.target.id === 'revealed-confirm') {
+      modal.remove();
+      document.body.classList.remove('ability-modal-open');
+      sendAbilityResolve(
+        ability.ability_id,
+        'confirm',
+        [],
+        null,
+        abilityState.selectedRevealIndices
+      );
+    }
+  });
+
+  document.body.appendChild(modal);
+}
+
 function showAbilityBanner(title, ruleText, showCancel) {
   hideAbilityBanner();
   const banner = document.createElement('div');
@@ -335,9 +433,10 @@ function exitTargetSelect(abort = false, continueQueue = true) {
   if (continueQueue) processChainQueue();
 }
 
-function sendAbilityResolve(abilityId, choice, targets, amount = null) {
+function sendAbilityResolve(abilityId, choice, targets, amount = null, revealedSelection = null) {
   const action = { type: 'ability_resolve', player: viewer, ability_id: abilityId, choice, targets };
   if (amount !== null && amount !== undefined) action.amount = amount;
+  if (revealedSelection !== null && revealedSelection !== undefined) action.revealed_selection = revealedSelection;
   sendAction(action);
 }
 
@@ -363,6 +462,8 @@ function processChainQueue() {
 function resolveAbility(ability) {
   if (ability.amount_choice) {
     showAbilityAmountChooser(ability);
+  } else if (ability.needs_reveal_choice && ability.revealed_cards?.length > 0) {
+    showRevealedCardSelector(ability);
   } else if (ability.needs_choice) {
     showAbilityDecision(ability);
   } else if (ability.needs_target) {

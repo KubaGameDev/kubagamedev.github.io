@@ -798,6 +798,53 @@ body.ability-choosing-amount .board {
   filter: grayscale(0.45) brightness(0.55);
 }
 
+.revealed-panel {
+  max-width: 560px;
+  width: 90vw;
+}
+
+.revealed-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.revealed-card-option {
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 4px;
+  text-align: center;
+  transition: border-color 0.15s, transform 0.1s;
+}
+
+.revealed-card-option:hover {
+  border-color: rgba(255, 215, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.revealed-card-option.selected {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.revealed-card-img {
+  width: 100%;
+  aspect-ratio: 100 / 140;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.revealed-card-name {
+  font-size: 10px;
+  color: #fff;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Responsive: stack art above text on narrow screens */
 @media (max-width: 640px) {
   .ability-modal-panel {

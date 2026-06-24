@@ -451,10 +451,13 @@ function cardEl(card, opts = {}) {
   if (attachedDon.length > 0) {
     const strip = document.createElement("div");
     strip.className = "attached-don-strip";
-    attachedDon.forEach(() => {
+    attachedDon.forEach((don) => {
       const pip = document.createElement("span");
       pip.className = "attached-don-pip";
-      pip.title = "Attached DON!! (+1000 power)";
+      if (don?.rested) pip.classList.add("rested-attached-don");
+      pip.title = don?.rested
+        ? "Attached rested DON!! (+1000 power; counts as attached DON)"
+        : "Attached DON!! (+1000 power)";
       strip.appendChild(pip);
     });
     wrapper.appendChild(strip);
@@ -533,7 +536,9 @@ function openCardModal(card, context = {}) {
     }
     if (card.effect && card.effect.includes("[Activate: Main]")) {
       const phaseOk = state && state.phase === "main" && state.turn_player === viewer && !isCpuVsCpu;
-      const used = abilityState.blockerUsedThisTurn.has(card.card_code || '');
+      const oncePerTurn = card.effect.includes("[Once Per Turn]");
+      const usedIds = new Set((state?.once_per_turn_used?.[viewer]) || []);
+      const used = oncePerTurn && usedIds.has(card.card_id || '');
       if (phaseOk && !used) {
         buttonsHtml += `<button class="btn modal-action" data-action="activate">Activate Ability</button>`;
       }

@@ -379,6 +379,11 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.35);
 }
 
+.attached-don-pip.rested-attached-don {
+  transform: rotate(90deg);
+  opacity: 0.88;
+}
+
 .card-modal {
   position: fixed;
   inset: 0;

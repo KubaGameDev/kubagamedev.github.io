@@ -502,6 +502,25 @@ function cardEl(card, opts = {}) {
   return wrapper;
 }
 
+function attachedDonCount(card) {
+  return (card?.attached_don || []).length;
+}
+
+function totalDonInPlay(player) {
+  const leaderAttached = attachedDonCount(player?.leader);
+  const characterAttached = (player?.characters || []).reduce(
+    (sum, card) => sum + attachedDonCount(card),
+    0
+  );
+  return (player?.don_active || 0) + (player?.don_rested || 0) + leaderAttached + characterAttached;
+}
+
+function formatDonCount(player) {
+  const inPlay = totalDonInPlay(player);
+  const remaining = Math.max(0, 10 - inPlay);
+  return `${player?.don_active ?? 0}/${inPlay} (${remaining})`;
+}
+
 function placeholderSvg(card) {
   const name = (card?.card_name || card?.card_code || "?").slice(0, 12);
   const cost = card?.cost || "—";
@@ -947,7 +966,7 @@ function renderPiles(player, side) {
   document.getElementById(`${side}-deck-count`).textContent = player.deck?.length ?? 0;
   document.getElementById(`${side}-life-count`).textContent = player.life?.length ?? 0;
   const donCount = document.getElementById(`${side}-don-count`);
-  donCount.textContent = `${player.don_active ?? 0}+${player.don_rested ?? 0}/${player.don_total ?? 0} (${player.don_deck ?? 0})`;
+  donCount.textContent = formatDonCount(player);
   document.getElementById(`${side}-trash-count`).textContent = player.trash?.length ?? 0;
 
   // Render DON pips in the DON area (just above hand) for player side

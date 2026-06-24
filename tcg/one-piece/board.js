@@ -42,6 +42,7 @@ window.abilityState = {
   pendingAction: null,
   validTargets: [],
   selectedTargets: [],
+  selectedAmount: null,
   chainQueue: [],
   toastTimer: null,
   blockerUsedThisTurn: new Set(),
@@ -91,6 +92,88 @@ function showAbilityToast(ability) {
   const timer = setTimeout(() => toast.remove(), 2500);
   toast.addEventListener('click', () => { clearTimeout(timer); toast.remove(); });
   document.body.appendChild(toast);
+}
+
+function hideAbilityProgress() {
+  const existing = document.querySelector('.ability-progress-toast');
+  if (existing) existing.remove();
+}
+
+function showAbilityProgress(ability) {
+  hideAbilityProgress();
+  const toast = document.createElement('div');
+  toast.className = 'ability-progress-toast';
+  const typeLabel = ability.type ? ability.type.replace(/_/g, ' ').toUpperCase() : 'ABILITY';
+  toast.innerHTML = `
+    <div class="progress-kicker">Ability in progress</div>
+    <div class="progress-title">${escapeHtml(`[${typeLabel}] — ${ability.card_name}`)}</div>
+    <div class="progress-text">${escapeHtml(ability.rule_text || ability.teaching_copy || '')}</div>
+    <button class="btn danger ability-progress-abort" type="button">Abort Ability</button>
+  `;
+  toast.querySelector('.ability-progress-abort').addEventListener('click', () => {
+    hideAbilityAmountChooser();
+    exitTargetSelect(false, false);
+    sendAbilityAbort(ability.ability_id);
+  });
+  document.body.appendChild(toast);
+}
+
+function hideAbilityAmountChooser() {
+  const existing = document.querySelector('.ability-amount-modal');
+  if (existing) existing.remove();
+  document.body.classList.remove('ability-choosing-amount');
+}
+
+function showAbilityAmountChooser(ability) {
+  const choice = ability.amount_choice || {};
+  const min = Number(choice.min ?? 1);
+  const max = Math.max(min, Number(choice.max ?? 1));
+  let selected = Math.min(max, Math.max(min, Number(choice.default ?? max)));
+  abilityState.mode = 'amount_select';
+  abilityState.pendingAction = ability;
+  abilityState.selectedAmount = selected;
+  document.body.classList.add('ability-choosing-amount');
+
+  const modal = document.createElement('div');
+  modal.className = 'ability-amount-modal';
+  modal.innerHTML = `
+    <div class="ability-modal-backdrop"></div>
+    <div class="ability-amount-panel">
+      <h3 class="ability-modal-title">${escapeHtml(choice.label || 'Choose amount')}</h3>
+      <p class="ability-modal-effect">${escapeHtml(ability.rule_text || '')}</p>
+      <div class="amount-stepper" aria-label="Choose amount">
+        <button class="btn amount-minus" type="button">−</button>
+        <strong class="amount-value">${selected}</strong>
+        <button class="btn amount-plus" type="button">+</button>
+      </div>
+      <div class="ability-modal-actions">
+        <button class="btn primary amount-next" type="button">Choose Target</button>
+        <button class="btn amount-abort" type="button">Abort Ability</button>
+      </div>
+    </div>
+  `;
+  const valueEl = modal.querySelector('.amount-value');
+  const sync = () => { valueEl.textContent = String(selected); abilityState.selectedAmount = selected; };
+  modal.querySelector('.amount-minus').addEventListener('click', () => { selected = Math.max(min, selected - 1); sync(); });
+  modal.querySelector('.amount-plus').addEventListener('click', () => { selected = Math.min(max, selected + 1); sync(); });
+  modal.querySelector('.amount-abort').addEventListener('click', () => {
+    hideAbilityAmountChooser();
+    abilityState.mode = 'idle';
+    abilityState.pendingAction = null;
+    sendAbilityAbort(ability.ability_id);
+  });
+  modal.querySelector('.amount-next').addEventListener('click', () => {
+    hideAbilityAmountChooser();
+    enterTargetSelect({
+      card_code: ability.card_code,
+      card_name: ability.card_name,
+      source: ability.source,
+      index: ability.source_index,
+      abilityType: ability.type,
+      ruleText: ability.rule_text
+    }, ability.valid_targets || []);
+  });
+  document.body.appendChild(modal);
 }
 
 function showAbilityDecision(ability) {
@@ -177,7 +260,7 @@ function showAbilityAbort(title, body, onClose) {
       if (onClose) onClose();
       else {
         if (abilityState.mode === 'target_select') {
-          exitTargetSelect(true);
+          exitTargetSelect(true, false);
         } else {
           abilityState.mode = 'idle';
           processChainQueue();
@@ -201,7 +284,7 @@ function showAbilityBanner(title, ruleText, showCancel) {
   document.body.appendChild(banner);
   if (showCancel) {
     banner.querySelector('#ability-banner-cancel').addEventListener('click', () => {
-      exitTargetSelect(true);
+      exitTargetSelect(true, false);
     });
   }
 }
@@ -220,9 +303,10 @@ function updateBannerConfirm() {
     confirmBtn.addEventListener('click', () => {
       const targets = abilityState.selectedTargets;
       const ability = abilityState.pendingAction;
-      exitTargetSelect(false);
+      const amount = abilityState.selectedAmount;
+      exitTargetSelect(false, false);
       if (ability) {
-        sendAbilityResolve(ability.ability_id, 'confirm', targets);
+        sendAbilityResolve(ability.ability_id, 'confirm', targets, amount);
       }
     });
     banner.appendChild(confirmBtn);
@@ -265,7 +349,7 @@ function enterTargetSelect(sourceCard, validTargets) {
   );
 }
 
-function exitTargetSelect(abort = false) {
+function exitTargetSelect(abort = false, continueQueue = true) {
   abilityState.mode = 'idle';
   document.body.classList.remove('target-select-active');
   document.querySelectorAll('.ability-source-pulse, .ability-target-valid, .ability-target-selected, .ability-dimmed')
@@ -279,11 +363,14 @@ function exitTargetSelect(abort = false) {
   abilityState.sourceCard = null;
   abilityState.validTargets = [];
   abilityState.selectedTargets = [];
-  processChainQueue();
+  abilityState.selectedAmount = null;
+  if (continueQueue) processChainQueue();
 }
 
-function sendAbilityResolve(abilityId, choice, targets) {
-  sendAction({ type: 'ability_resolve', player: viewer, ability_id: abilityId, choice, targets });
+function sendAbilityResolve(abilityId, choice, targets, amount = null) {
+  const action = { type: 'ability_resolve', player: viewer, ability_id: abilityId, choice, targets };
+  if (amount !== null && amount !== undefined) action.amount = amount;
+  sendAction(action);
 }
 
 function sendAbilitySkip(abilityId) {
@@ -306,7 +393,10 @@ function processChainQueue() {
 }
 
 function resolveAbility(ability) {
-  if (ability.needs_choice) {
+  showAbilityProgress(ability);
+  if (ability.amount_choice) {
+    showAbilityAmountChooser(ability);
+  } else if (ability.needs_choice) {
     showAbilityDecision(ability);
   } else if (ability.needs_target) {
     if (!ability.valid_targets || ability.valid_targets.length === 0) {
@@ -658,7 +748,14 @@ document.addEventListener("keydown", (ev) => {
       if (ability) sendAbilitySkip(ability.ability_id);
       processChainQueue();
     } else if (abilityState.mode === 'target_select') {
-      exitTargetSelect(true);
+      exitTargetSelect(true, false);
+    } else if (abilityState.mode === 'amount_select') {
+      const ability = abilityState.pendingAction;
+      hideAbilityAmountChooser();
+      abilityState.mode = 'idle';
+      abilityState.pendingAction = null;
+      abilityState.selectedAmount = null;
+      if (ability) sendAbilityAbort(ability.ability_id);
     }
   }
 });
@@ -853,6 +950,8 @@ function render() {
   const isResolving = abilityState.mode !== 'idle';
   els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main" || isResolving;
   document.body.classList.toggle('ability-modal-open', isResolving);
+  const pendingMine = (state.pending_abilities || []).some(a => a.player === viewer);
+  if (!pendingMine && abilityState.mode === 'idle') hideAbilityProgress();
 
   if (state.phase === "mulligan") {
     const needMulligan = !state.mulligan_done?.[meKey];

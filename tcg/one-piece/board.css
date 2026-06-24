@@ -74,6 +74,7 @@ body {
 
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn.primary { background: var(--accent); color: #000; border-color: var(--accent); }
+.btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
 
 .board {
   display: grid;
@@ -554,9 +555,7 @@ body {
 
 /* Disable interactions on dimmed elements during target selection */
 .ability-dimmed,
-.board.target-select-active .hand-zone,
-.board.target-select-active .leader-zone:not(.ability-target-valid):not(.ability-target-selected),
-.board.target-select-active .char-slot:not(.ability-target-valid):not(.ability-target-selected) {
+body.target-select-active .hand-zone {
   pointer-events: none !important;
 }
 
@@ -721,9 +720,95 @@ body {
   margin-top: 0.6rem;
 }
 
-/* Disable board interactions during decision / auto_notify */
-body.ability-modal-open .board {
+/* Disable board interactions during decision / amount selection.
+   Target-selection keeps the board clickable so valid cards can be chosen. */
+body.ability-modal-open:not(.target-select-active) .board,
+body.ability-choosing-amount .board {
   pointer-events: none;
+}
+
+.ability-progress-toast {
+  position: fixed;
+  top: 54px;
+  right: 12px;
+  width: min(340px, 86vw);
+  background: #10263a;
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.58);
+  z-index: 320;
+  animation: toastSlideIn 0.25s ease-out;
+}
+
+.ability-progress-toast .progress-kicker {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ability-progress-toast .progress-title {
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.ability-progress-toast .progress-text {
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.ability-progress-toast .ability-progress-abort {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.ability-amount-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: grid;
+  place-items: center;
+}
+
+.ability-amount-panel {
+  position: relative;
+  width: min(420px, 92vw);
+  padding: 1rem;
+  border-radius: 12px;
+  background: #10263a;
+  border: 1px solid rgba(255, 215, 0, 0.38);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.62);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.amount-stepper {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  gap: 0.75rem;
+  align-items: center;
+  justify-items: center;
+  padding: 0.6rem 0.5rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+}
+
+.amount-stepper .amount-value {
+  min-width: 3ch;
+  text-align: center;
+  color: var(--accent);
+  font-size: 1.65rem;
+}
+
+body.ability-choosing-amount .board {
+  filter: grayscale(0.45) brightness(0.55);
 }
 
 /* Responsive: stack art above text on narrow screens */

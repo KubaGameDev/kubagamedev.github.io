@@ -94,30 +94,6 @@ function showAbilityToast(ability) {
   document.body.appendChild(toast);
 }
 
-function hideAbilityProgress() {
-  const existing = document.querySelector('.ability-progress-toast');
-  if (existing) existing.remove();
-}
-
-function showAbilityProgress(ability) {
-  hideAbilityProgress();
-  const toast = document.createElement('div');
-  toast.className = 'ability-progress-toast';
-  const typeLabel = ability.type ? ability.type.replace(/_/g, ' ').toUpperCase() : 'ABILITY';
-  toast.innerHTML = `
-    <div class="progress-kicker">Ability in progress</div>
-    <div class="progress-title">${escapeHtml(`[${typeLabel}] — ${ability.card_name}`)}</div>
-    <div class="progress-text">${escapeHtml(ability.rule_text || ability.teaching_copy || '')}</div>
-    <button class="btn danger ability-progress-abort" type="button">Abort Ability</button>
-  `;
-  toast.querySelector('.ability-progress-abort').addEventListener('click', () => {
-    hideAbilityAmountChooser();
-    exitTargetSelect(false, false);
-    sendAbilityAbort(ability.ability_id);
-  });
-  document.body.appendChild(toast);
-}
-
 function hideAbilityAmountChooser() {
   const existing = document.querySelector('.ability-amount-modal');
   if (existing) existing.remove();
@@ -279,10 +255,20 @@ function showAbilityBanner(title, ruleText, showCancel) {
   banner.innerHTML = `
     <span class="banner-rule">${escapeHtml(title)}</span>
     <span>${escapeHtml(ruleText || '')}</span>
-    ${showCancel ? '<button class="banner-cancel" id="ability-banner-cancel">Cancel</button>' : ''}
+    ${showCancel ? '<span class="banner-actions"><button class="btn primary" id="ability-banner-confirm" disabled>Confirm</button><button class="banner-cancel" id="ability-banner-cancel">Abort Ability</button></span>' : ''}
   `;
   document.body.appendChild(banner);
   if (showCancel) {
+    banner.querySelector('#ability-banner-confirm').addEventListener('click', () => {
+      if (abilityState.selectedTargets.length === 0) return;
+      const targets = abilityState.selectedTargets;
+      const ability = abilityState.pendingAction;
+      const amount = abilityState.selectedAmount;
+      exitTargetSelect(false, false);
+      if (ability) {
+        sendAbilityResolve(ability.ability_id, 'confirm', targets, amount);
+      }
+    });
     banner.querySelector('#ability-banner-cancel').addEventListener('click', () => {
       exitTargetSelect(true, false);
     });
@@ -292,27 +278,9 @@ function showAbilityBanner(title, ruleText, showCancel) {
 function updateBannerConfirm() {
   const banner = document.getElementById('ability-banner');
   if (!banner) return;
-  let confirmBtn = banner.querySelector('#ability-banner-confirm');
-  const hasSelection = abilityState.selectedTargets.length > 0;
-  if (hasSelection && !confirmBtn) {
-    confirmBtn = document.createElement('button');
-    confirmBtn.id = 'ability-banner-confirm';
-    confirmBtn.className = 'btn primary';
-    confirmBtn.style.cssText = 'margin-left:0.5rem;padding:0.25rem 0.6rem;border-radius:5px;font-size:0.82rem;';
-    confirmBtn.textContent = 'Confirm';
-    confirmBtn.addEventListener('click', () => {
-      const targets = abilityState.selectedTargets;
-      const ability = abilityState.pendingAction;
-      const amount = abilityState.selectedAmount;
-      exitTargetSelect(false, false);
-      if (ability) {
-        sendAbilityResolve(ability.ability_id, 'confirm', targets, amount);
-      }
-    });
-    banner.appendChild(confirmBtn);
-  } else if (!hasSelection && confirmBtn) {
-    confirmBtn.remove();
-  }
+  const confirmBtn = banner.querySelector('#ability-banner-confirm');
+  if (!confirmBtn) return;
+  confirmBtn.disabled = abilityState.selectedTargets.length === 0;
 }
 
 function hideAbilityBanner() {
@@ -393,7 +361,6 @@ function processChainQueue() {
 }
 
 function resolveAbility(ability) {
-  showAbilityProgress(ability);
   if (ability.amount_choice) {
     showAbilityAmountChooser(ability);
   } else if (ability.needs_choice) {
@@ -508,26 +475,12 @@ function cardEl(card, opts = {}) {
         const zone = wrapper.closest('[data-zone]')?.dataset.zone || '';
         const idxStr = wrapper.closest('[data-zone]')?.dataset.slot?.split('-').pop() ?? wrapper.dataset.index;
         const idx = parseInt(idxStr, 10);
-        if (isNaN(idx)) {
-          // Leader target (no index)
-          const already = abilityState.selectedTargets.find(t => t.zone === zone);
-          if (already) {
-            abilityState.selectedTargets = abilityState.selectedTargets.filter(t => t.zone !== zone);
-            wrapper.classList.remove('ability-target-selected');
-          } else {
-            abilityState.selectedTargets.push({ zone, index: null });
-            wrapper.classList.add('ability-target-selected');
-          }
-        } else {
-          const already = abilityState.selectedTargets.find(t => t.zone === zone && t.index === idx);
-          if (already) {
-            abilityState.selectedTargets = abilityState.selectedTargets.filter(t => !(t.zone === zone && t.index === idx));
-            wrapper.classList.remove('ability-target-selected');
-          } else {
-            abilityState.selectedTargets.push({ zone, index: idx });
-            wrapper.classList.add('ability-target-selected');
-          }
-        }
+        const target = { zone, index: isNaN(idx) ? null : idx };
+        const already = abilityState.selectedTargets.find(t => t.zone === target.zone && t.index === target.index);
+        document.querySelectorAll('.ability-target-selected')
+          .forEach(el => el.classList.remove('ability-target-selected'));
+        abilityState.selectedTargets = already ? [] : [target];
+        if (!already) wrapper.classList.add('ability-target-selected');
         updateBannerConfirm();
       }
       return;
@@ -950,8 +903,6 @@ function render() {
   const isResolving = abilityState.mode !== 'idle';
   els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main" || isResolving;
   document.body.classList.toggle('ability-modal-open', isResolving);
-  const pendingMine = (state.pending_abilities || []).some(a => a.player === viewer);
-  if (!pendingMine && abilityState.mode === 'idle') hideAbilityProgress();
 
   if (state.phase === "mulligan") {
     const needMulligan = !state.mulligan_done?.[meKey];

@@ -738,18 +738,29 @@ function canAttackFromContext(card, context) {
   if (!card) return false;
   if (card.rested || card.leader_rested) return false;
   // Non-Rush characters cannot attack on the turn they are played.
-  if (context.source === "character" && card.played_this_turn && !card.rush) return false;
+  if (context.source === "character" && card.played_this_turn && !hasActiveRush(card)) return false;
   return true;
+}
+
+function attachedDonCount(card) {
+  return Array.isArray(card?.attached_don) ? card.attached_don.length : Number(card?.attached_don || 0);
+}
+
+function hasActiveRush(card) {
+  if (!card) return false;
+  if (card.rush || (Array.isArray(card.keywords) && card.keywords.includes("Rush"))) return true;
+  const required = Number(card.rush_cost || 0);
+  return required > 0 && attachedDonCount(card) >= required;
 }
 
 /**
  * Build the attack button HTML for a character modal.
- * Shows Rush cost state if applicable: disabled when insufficient DON, enabled when sufficient.
+ * Shows attached-DON condition state for continuous Rush effects.
  */
 function buildAttackButton(card, context) {
   const rushCost = (card?.rush_cost) || 0;
-  const me = state ? state.players[viewer] : null;
-  const hasEnoughDon = me && me.don_active >= rushCost;
+  const attached = attachedDonCount(card);
+  const hasEnoughDon = attached >= rushCost;
   const isRushThisTurn = rushCost > 0 && card.played_this_turn;
 
   // For normal characters (no rush cost), just show Attack
@@ -757,12 +768,12 @@ function buildAttackButton(card, context) {
     return `<button class="btn danger modal-action" data-action="attack" data-target="${context.source}" data-index="${context.index ?? 0}">Attack</button>`;
   }
 
-  // Rush character played this turn: show button with cost state
+  // Rush character played this turn: show attached-DON requirement state
   if (hasEnoughDon) {
-    return `<button class="btn danger modal-action" data-action="attack" data-target="${context.source}" data-index="${context.index ?? 0}" title="Cost ${rushCost} DON!!">Attack (Cost ${rushCost} DON!!)</button>`;
+    return `<button class="btn danger modal-action" data-action="attack" data-target="${context.source}" data-index="${context.index ?? 0}" title="Rush active from ${rushCost} attached DON!!">Attack (Rush active)</button>`;
   }
-  // Not enough DON: show disabled
-  return `<button class="btn modal-action disabled" disabled title="Needs ${rushCost} DON!!">Attack — Needs ${rushCost} DON!!</button>`;
+  // Not enough attached DON: show disabled
+  return `<button class="btn modal-action disabled" disabled title="Attach ${rushCost} DON!! to gain Rush">Attack — Attach ${rushCost} DON!! first</button>`;
 }
 
 function startAttackGizmo(card, fromType, fromIndex) {
@@ -1062,8 +1073,12 @@ function scheduleAutoStep() {
       hidePhaseBanner();
       return;
     }
-    // Continue the same auto-step chain with single_step=true for paced actions
-    sendAction(null, { single_step: true }).catch(() => {});
+    // Continue the same auto-step chain with single_step=true for paced actions.
+    // Player resource phases require an explicit pass action; CPU phases can be backend-driven.
+    const action = (!isCpuTurn && isResourcePhase)
+      ? { type: "pass", player: viewer }
+      : null;
+    sendAction(action, { single_step: true }).catch(() => {});
   }, stepDelay());
 }
 

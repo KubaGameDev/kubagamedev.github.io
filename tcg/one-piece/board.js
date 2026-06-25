@@ -1374,7 +1374,7 @@ els.backBtn.addEventListener("click", () => { location.href = "./"; });
 
 els.passBtn.addEventListener("click", async () => {
   if (!state || state.turn_player !== viewer || isCpuVsCpu) return;
-  await sendAction({ type: "pass", player: viewer });
+  await sendAction({ type: "pass", player: viewer }, { single_step: true });
 });
 
 if (els.phaseBtn) {

@@ -667,7 +667,7 @@ function openCardModal(card, context = {}) {
       buttonsHtml += `<button class="btn primary modal-action" data-action="attach" data-target="${context.source}" data-index="${context.index ?? 0}">+1 DON!!</button>`;
     }
     if ((context.source === "character" || context.source === "leader") && canAttackFromContext(card, context)) {
-      buttonsHtml += `<button class="btn danger modal-action" data-action="attack" data-target="${context.source}" data-index="${context.index ?? 0}">Attack</button>`;
+      buttonsHtml += buildAttackButton(card, context);
     }
     if (context.source === "stage" && isMain) {
       buttonsHtml += `<button class="btn modal-action" data-action="rest-stage">Rest Stage</button>`;
@@ -737,8 +737,32 @@ function openCardModal(card, context = {}) {
 function canAttackFromContext(card, context) {
   if (!card) return false;
   if (card.rested || card.leader_rested) return false;
+  // Non-Rush characters cannot attack on the turn they are played.
   if (context.source === "character" && card.played_this_turn && !card.rush) return false;
   return true;
+}
+
+/**
+ * Build the attack button HTML for a character modal.
+ * Shows Rush cost state if applicable: disabled when insufficient DON, enabled when sufficient.
+ */
+function buildAttackButton(card, context) {
+  const rushCost = (card?.rush_cost) || 0;
+  const me = state ? state.players[viewer] : null;
+  const hasEnoughDon = me && me.don_active >= rushCost;
+  const isRushThisTurn = rushCost > 0 && card.played_this_turn;
+
+  // For normal characters (no rush cost), just show Attack
+  if (!isRushThisTurn) {
+    return `<button class="btn danger modal-action" data-action="attack" data-target="${context.source}" data-index="${context.index ?? 0}">Attack</button>`;
+  }
+
+  // Rush character played this turn: show button with cost state
+  if (hasEnoughDon) {
+    return `<button class="btn danger modal-action" data-action="attack" data-target="${context.source}" data-index="${context.index ?? 0}" title="Cost ${rushCost} DON!!">Attack (Cost ${rushCost} DON!!)</button>`;
+  }
+  // Not enough DON: show disabled
+  return `<button class="btn modal-action disabled" disabled title="Needs ${rushCost} DON!!">Attack — Needs ${rushCost} DON!!</button>`;
 }
 
 function startAttackGizmo(card, fromType, fromIndex) {

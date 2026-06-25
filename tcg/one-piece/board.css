@@ -73,6 +73,7 @@ body {
 }
 
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn.disabled { opacity: 0.4; cursor: not-allowed; }
 .btn.primary { background: var(--accent); color: #000; border-color: var(--accent); }
 .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
 

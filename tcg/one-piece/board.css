@@ -315,6 +315,18 @@ body {
   overflow: hidden;
 }
 
+.opponent-side .don-area {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  padding: 0.15rem;
+  min-height: 24px;
+  max-height: 40px;
+  overflow: visible;
+}
+
 .player-side .hand-zone .card-wrapper,
 .player-side .hand-zone .card.in-hand {
   width: var(--hand-card-w);
@@ -557,6 +569,116 @@ body {
 
 .attack-gizmo .card {
   cursor: crosshair;
+}
+
+.attack-gizmo .card {
+  cursor: crosshair;
+}
+
+/* ============================================
+   ATTACK / DEFENSE FLOW UX
+   ============================================ */
+
+.attack-prompt {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  background: rgba(255, 90, 90, 0.12);
+  border: 1px solid rgba(255, 90, 90, 0.35);
+  color: var(--danger);
+  font-size: clamp(0.75rem, 1.5vw, 0.95rem);
+  font-weight: 600;
+  animation: attackPromptPulse 1.5s ease-in-out infinite;
+  min-height: 0;
+  flex-wrap: wrap;
+}
+
+.attack-prompt.active { display: flex; }
+
+@keyframes attackPromptPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.attack-prompt-text {
+  white-space: nowrap;
+}
+
+.attack-prompt-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Blocker highlight */
+.blocker-highlight {
+  position: relative;
+}
+.blocker-highlight::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid #00aaff;
+  border-radius: 8px;
+  animation: blockerPulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes blockerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 160, 255, 0.55); }
+  50%      { box-shadow: 0 0 0 6px rgba(0, 160, 255, 0.15); }
+}
+
+/* Counter highlight in hand */
+.counter-highlight {
+  position: relative;
+}
+.counter-highlight::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  animation: counterPulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes counterPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.55); }
+  50%      { box-shadow: 0 0 0 6px rgba(255, 215, 0, 0.15); }
+}
+
+/* Attacker highlight */
+.attacker-highlight {
+  position: relative;
+}
+.attacker-highlight::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--danger);
+  border-radius: 8px;
+  animation: attackerPulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes attackerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 90, 90, 0.55); }
+  50%      { box-shadow: 0 0 0 6px rgba(255, 90, 90, 0.15); }
+}
+
+/* Battle resolution banner styling override */
+.attack-prompt.resolved {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.35);
+  color: var(--success);
 }
 
 .card-modal-details strong {

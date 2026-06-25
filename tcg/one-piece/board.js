@@ -502,6 +502,9 @@ const els = {
   mulliganKeep: document.getElementById("mulligan-keep"),
   mulliganRedraw: document.getElementById("mulligan-redraw"),
   log: document.getElementById("log"),
+  attackPrompt: document.getElementById("attack-prompt"),
+  attackPromptText: document.getElementById("attack-prompt-text"),
+  attackPromptActions: document.getElementById("attack-prompt-actions"),
 };
 
 function api(path, body) {
@@ -528,6 +531,7 @@ function cardEl(card, opts = {}) {
   wrapper.className = `card-wrapper ${opts.className || ""}`;
   wrapper.draggable = opts.draggable !== false;
   wrapper.dataset.cardCode = card.card_code || "";
+  if (card.card_id) wrapper.dataset.cardId = card.card_id;
   if (opts.source) wrapper.dataset.source = opts.source;
   if (opts.index != null) wrapper.dataset.index = opts.index;
 
@@ -549,7 +553,12 @@ function cardEl(card, opts = {}) {
   }
   // Effective power overlay when different from printed power
   const basePower = parseInt(card.power, 10) || 0;
-  const attachedBoost = (card.attached_don?.length || 0) * 1000;
+  const isMyTurn = state && state.turn_player === viewer;
+  const isMyCard = opts.source && (
+    (viewer === "player" && !opts.source.startsWith("opponent")) ||
+    (viewer === "cpu" && opts.source.startsWith("opponent"))
+  );
+  const attachedBoost = (isMyTurn && isMyCard) ? (card.attached_don?.length || 0) * 1000 : 0;
   const bonusPower = card.bonus_power || 0;
   const battleBoost = card.battle_power_boost || 0;
   const effectivePower = basePower + attachedBoost + bonusPower + battleBoost;
@@ -776,6 +785,27 @@ function buildAttackButton(card, context) {
   return `<button class="btn modal-action disabled" disabled title="Attach ${rushCost} DON!! to gain Rush">Attack — Attach ${rushCost} DON!! first</button>`;
 }
 
+async function declareAttack(action) {
+  if (actionInFlight) return;
+  actionInFlight = true;
+  try {
+    const res = await api(`/api/game/${gameId}/attack`, {
+      attacker_type: action.attacker_type,
+      attacker_index: action.attacker_index,
+      target: action.target,
+      target_index: action.target_index,
+    });
+    state = res.state;
+    syncModeFromState();
+    render();
+  } catch (err) {
+    setMessage(`Attack error: ${err.message}`);
+  } finally {
+    actionInFlight = false;
+    scheduleAutoStep();
+  }
+}
+
 function startAttackGizmo(card, fromType, fromIndex) {
   if (gizmoState) clearGizmo();
   gizmoState = { fromCard: card, fromType, fromIndex };
@@ -836,26 +866,23 @@ function onGizmoTargetClick(wrapper, card, opts) {
   if (!gizmoState || !state) return;
   const zone = wrapper.closest("[data-zone]")?.dataset.zone || "";
   if (zone === "opponent-leader") {
-    sendAction({
-      type: "attack",
-      player: viewer,
+    declareAttack({
       attacker_type: gizmoState.fromType,
-      ...(gizmoState.fromType === "character" ? { attacker_index: gizmoState.fromIndex } : {}),
+      attacker_index: gizmoState.fromType === "character" ? gizmoState.fromIndex : undefined,
       target: "player",
     });
   } else if (zone.startsWith("opponent-char-")) {
     const slot = parseInt(zone.split("-").pop(), 10);
     if (card.rested) {
-      sendAction({
-        type: "attack",
-        player: viewer,
+      declareAttack({
         attacker_type: gizmoState.fromType,
-        ...(gizmoState.fromType === "character" ? { attacker_index: gizmoState.fromIndex } : {}),
+        attacker_index: gizmoState.fromType === "character" ? gizmoState.fromIndex : undefined,
         target: "character",
         target_index: slot,
       });
     } else {
       setMessage("You can only attack rested characters.");
+      return;
     }
   } else {
     setMessage("Invalid target. Click opponent Leader or rested Character.");
@@ -936,7 +963,16 @@ async function onDrop(ev) {
     setMessage("Illegal drop.");
     return;
   }
-  await sendAction(action);
+  if (action.type === "attack") {
+    await declareAttack({
+      attacker_type: action.attacker_type,
+      attacker_index: action.attacker_index,
+      target: action.target,
+      target_index: action.target_index,
+    });
+  } else {
+    await sendAction(action);
+  }
 }
 
 function dropToAction(data, zone) {
@@ -1044,17 +1080,75 @@ function scheduleAutoStep() {
     return;
   }
 
+  const aa = state.active_attack;
+
+  // Attack subphase pacing takes priority over normal phase pacing
+  if (aa) {
+    const isCpuPending = aa.pending_player_id === "cpu";
+    const isPlayerPending = aa.pending_player_id === "player";
+    const isResolved = aa.resolved;
+    const pendingInput = aa.pending_input;
+
+    if (isResolved) {
+      // Show result for 2s then refresh
+      showPhaseBanner("⚔️", attackBannerText(aa));
+      autoStepTimer = setTimeout(() => {
+        autoStepTimer = null;
+        hidePhaseBanner();
+        loadGame();
+      }, 2000);
+      return;
+    }
+
+    if (pendingInput) {
+      if (isCpuPending) {
+        // CPU needs to decide: auto-step after 1s
+        showPhaseBanner("⏳", attackBannerText(aa));
+        autoStepTimer = setTimeout(() => {
+          autoStepTimer = null;
+          if (!state || !state.active_attack) return;
+          // CPU auto-passes on blocker/counter/trigger for MVP
+          const endpoint = pendingInput === "BLOCKER_DECLARATION" ? "blocker" :
+                           pendingInput === "COUNTER_PLAY" ? "counter" :
+                           pendingInput === "TRIGGER_ACTIVATION" ? "trigger" : null;
+          if (endpoint) {
+            const body = pendingInput === "BLOCKER_DECLARATION" ? { blocker_card_id: null } :
+                         pendingInput === "COUNTER_PLAY" ? { counter_card_id: null } :
+                         pendingInput === "TRIGGER_ACTIVATION" ? { activate: false } : {};
+            api(`/api/game/${gameId}/attack/${endpoint}`, body)
+              .then((res) => { state = res.state; syncModeFromState(); render(); scheduleAutoStep(); })
+              .catch(() => {});
+          } else {
+            loadGame();
+          }
+        }, 1000);
+        return;
+      } else {
+        // Player needs to decide: show UI, don't auto-step
+        showPhaseBanner("⚔️", attackBannerText(aa));
+        return;
+      }
+    }
+
+    // No pending input and not resolved: poll after 1s
+    showPhaseBanner("⏳", attackBannerText(aa));
+    autoStepTimer = setTimeout(() => {
+      autoStepTimer = null;
+      loadGame().catch(() => {});
+    }, 1000);
+    return;
+  }
+
+  // Normal phase scheduling
   const isCpuTurn = state.turn_player === "cpu";
   const isResourcePhase = state.phase === "refresh" || state.phase === "draw" || state.phase === "don";
 
-  // Determine whether we need an automated step
   let needsStep = false;
   if (isCpuVsCpu) {
-    needsStep = true;                       // both sides auto
+    needsStep = true;
   } else if (isCpuTurn) {
-    needsStep = true;                       // CPU's turn auto-advances
+    needsStep = true;
   } else if (isResourcePhase && state.phase !== "refresh") {
-    // Player resource phases (draw, don) auto-advance with banner after player clicks "Start Turn"
     needsStep = true;
   }
 
@@ -1063,7 +1157,6 @@ function scheduleAutoStep() {
     return;
   }
 
-  // Show thinking / phase banner
   const bannerIcon = isCpuTurn && state.phase === "main" ? "🔄" : "⏳";
   showPhaseBanner(bannerIcon, phaseBannerTextFor(state.phase, state.turn_player));
 
@@ -1073,13 +1166,33 @@ function scheduleAutoStep() {
       hidePhaseBanner();
       return;
     }
-    // Continue the same auto-step chain with single_step=true for paced actions.
-    // Player resource phases require an explicit pass action; CPU phases can be backend-driven.
     const action = (!isCpuTurn && isResourcePhase)
       ? { type: "pass", player: viewer }
       : null;
     sendAction(action, { single_step: true }).catch(() => {});
   }, stepDelay());
+}
+
+function attackBannerText(aa) {
+  if (!aa) return "";
+  const subphase = aa.subphase;
+  const pending = aa.pending_input;
+  if (aa.resolved) {
+    const attacker = aa.attacker_name || "Attacker";
+    const defender = aa.defender_name || "Defender";
+    const attackerPower = aa.attacker_power ?? "?";
+    const defenderPower = aa.defender_power ?? "?";
+    if (aa.attacker_wins) {
+      return `⚔️ ${attacker} (${attackerPower}) vs ${defender} (${defenderPower}) → ${attacker} wins! ${defender} is K.O.'d`;
+    }
+    return `⚔️ ${attacker} (${attackerPower}) vs ${defender} (${defenderPower}) → ${defender} survives!`;
+  }
+  if (pending === "BLOCKER_DECLARATION") return "Defender may block…";
+  if (pending === "COUNTER_PLAY") return "Defender may counter…";
+  if (pending === "TRIGGER_ACTIVATION") return "Trigger activation available…";
+  if (subphase === "attack_step") return "When Attacking effects resolve…";
+  if (subphase === "battle_resolution" || subphase === "damage_resolution") return "Battle resolution…";
+  return "Resolving attack…";
 }
 
 async function loadGame() {
@@ -1169,6 +1282,195 @@ function render() {
 
   // Chain queue processing
   processChainQueue();
+
+  // Attack subphase UI
+  renderAttackUI();
+}
+
+function renderAttackUI() {
+  const promptEl = document.getElementById("attack-prompt");
+  const textEl = document.getElementById("attack-prompt-text");
+  const actionsEl = document.getElementById("attack-prompt-actions");
+  if (!promptEl || !textEl || !actionsEl) return;
+
+  // Clear highlights
+  document.querySelectorAll('.blocker-highlight, .counter-highlight, .attacker-highlight')
+    .forEach(el => el.classList.remove('blocker-highlight', 'counter-highlight', 'attacker-highlight'));
+
+  const aa = state?.active_attack;
+  if (!aa) {
+    promptEl.style.display = "none";
+    promptEl.className = "attack-prompt";
+    textEl.textContent = "";
+    actionsEl.innerHTML = "";
+    return;
+  }
+
+  promptEl.style.display = "";
+  promptEl.className = "attack-prompt active";
+
+  const attackerId = aa.attacker_card_id;
+  const targetId = aa.blocker_card_id || aa.target_card_id;
+  const defenderKey = aa.pending_player_id;
+  const pending = aa.pending_input;
+
+  // Highlight attacker
+  const attackerEl = document.querySelector(`[data-card-id="${attackerId}"]`);
+  if (attackerEl) attackerEl.classList.add("attacker-highlight");
+
+  if (pending === "BLOCKER_DECLARATION") {
+    textEl.textContent = "Defender may block…";
+    if (defenderKey === viewer) {
+      // Find valid blockers among active characters
+      const meKey = isCpuVsCpu ? "player" : viewer;
+      const me = state.players[meKey];
+      const blockers = (me.characters || []).filter((c, idx) => {
+        const isBlocker = (c.keywords || []).some(k => k.toLowerCase() === "blocker") ||
+          (c.effect || "").toLowerCase().includes("[blocker]");
+        return isBlocker && !c.rested;
+      });
+      actionsEl.innerHTML = "";
+      blockers.forEach((b) => {
+        const btn = document.createElement("button");
+        btn.className = "btn primary";
+        btn.textContent = `Block with ${b.card_name || b.card_code}`;
+        btn.addEventListener("click", () => {
+          sendBlockerChoice(b.card_id);
+        });
+        actionsEl.appendChild(btn);
+        // Highlight blocker card
+        const bel = document.querySelector(`[data-card-id="${b.card_id}"]`);
+        if (bel) bel.classList.add("blocker-highlight");
+      });
+      const passBtn = document.createElement("button");
+      passBtn.className = "btn";
+      passBtn.textContent = "Don't Block";
+      passBtn.addEventListener("click", () => sendBlockerChoice(null));
+      actionsEl.appendChild(passBtn);
+    } else {
+      actionsEl.innerHTML = `<span class="attack-prompt-text">CPU is deciding…</span>`;
+    }
+    return;
+  }
+
+  if (pending === "COUNTER_PLAY") {
+    textEl.textContent = "Defender may counter…";
+    if (defenderKey === viewer) {
+      const meKey = isCpuVsCpu ? "player" : viewer;
+      const me = state.players[meKey];
+      const counters = (me.hand || []).filter(c => {
+        const type = (c.card_type || "").toUpperCase();
+        // Event Counters: Event cards with "Counter" in effect text
+        if (type === "EVENT") return (c.effect || "").toLowerCase().includes("counter");
+        // Character Counters: Character cards with a printed Counter value
+        if (type === "CHARACTER") return !!(c.counter && c.counter !== "0" && c.counter !== "");
+        return false;
+      });
+      actionsEl.innerHTML = "";
+      counters.forEach((c, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "btn primary";
+        const isCharCounter = (c.card_type || "").toUpperCase() === "CHARACTER";
+        btn.textContent = isCharCounter
+          ? `Discard ${c.card_name || c.card_code} as Counter (+${c.counter})`
+          : `Play ${c.card_name || c.card_code} as Counter`;
+        btn.addEventListener("click", () => {
+          sendCounterChoice(c.card_id);
+        });
+        actionsEl.appendChild(btn);
+        // Highlight counter card in hand
+        const hel = document.querySelector(`#player-hand [data-card-id="${c.card_id}"]`);
+        if (hel) hel.classList.add("counter-highlight");
+      });
+      const doneBtn = document.createElement("button");
+      doneBtn.className = "btn";
+      doneBtn.textContent = "Done";
+      doneBtn.addEventListener("click", () => sendCounterChoice(null));
+      actionsEl.appendChild(doneBtn);
+    } else {
+      actionsEl.innerHTML = `<span class="attack-prompt-text">CPU is deciding…</span>`;
+    }
+    return;
+  }
+
+  if (pending === "TRIGGER_ACTIVATION") {
+    textEl.textContent = "Activate Trigger?";
+    if (defenderKey === viewer) {
+      actionsEl.innerHTML = "";
+      const yesBtn = document.createElement("button");
+      yesBtn.className = "btn primary";
+      yesBtn.textContent = "Activate Trigger";
+      yesBtn.addEventListener("click", () => sendTriggerChoice(true));
+      actionsEl.appendChild(yesBtn);
+      const noBtn = document.createElement("button");
+      noBtn.className = "btn";
+      noBtn.textContent = "Decline";
+      noBtn.addEventListener("click", () => sendTriggerChoice(false));
+      actionsEl.appendChild(noBtn);
+    } else {
+      actionsEl.innerHTML = `<span class="attack-prompt-text">CPU is deciding…</span>`;
+    }
+    return;
+  }
+
+  if (aa.resolved) {
+    promptEl.classList.add("resolved");
+    textEl.textContent = attackBannerText(aa);
+    actionsEl.innerHTML = "";
+    return;
+  }
+
+  // Default subphase display
+  textEl.textContent = attackBannerText(aa);
+  actionsEl.innerHTML = "";
+}
+
+async function sendBlockerChoice(blockerCardId) {
+  if (actionInFlight) return;
+  actionInFlight = true;
+  try {
+    const res = await api(`/api/game/${gameId}/attack/blocker`, { blocker_card_id: blockerCardId });
+    state = res.state;
+    syncModeFromState();
+    render();
+  } catch (err) {
+    setMessage(`Blocker error: ${err.message}`);
+  } finally {
+    actionInFlight = false;
+    scheduleAutoStep();
+  }
+}
+
+async function sendCounterChoice(counterCardId) {
+  if (actionInFlight) return;
+  actionInFlight = true;
+  try {
+    const res = await api(`/api/game/${gameId}/attack/counter`, { counter_card_id: counterCardId });
+    state = res.state;
+    syncModeFromState();
+    render();
+  } catch (err) {
+    setMessage(`Counter error: ${err.message}`);
+  } finally {
+    actionInFlight = false;
+    scheduleAutoStep();
+  }
+}
+
+async function sendTriggerChoice(activate) {
+  if (actionInFlight) return;
+  actionInFlight = true;
+  try {
+    const res = await api(`/api/game/${gameId}/attack/trigger`, { activate });
+    state = res.state;
+    syncModeFromState();
+    render();
+  } catch (err) {
+    setMessage(`Trigger error: ${err.message}`);
+  } finally {
+    actionInFlight = false;
+    scheduleAutoStep();
+  }
 }
 
 function renderPhaseBtn() {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OPTCG Playtest Board</title>
-  <link rel="stylesheet" href="board.css?v=ability-system-11" />
+  <link rel="stylesheet" href="board.css?v=ability-system-13" />
 </head>
 <body>
   <div id="loading" class="loading-overlay">Loading board...</div>
@@ -60,6 +60,10 @@
         <span id="phase-banner-icon" class="phase-banner-icon"></span>
         <span id="phase-banner-text" class="phase-banner-text"></span>
       </div>
+      <div id="attack-prompt" class="attack-prompt" style="display:none;">
+        <span id="attack-prompt-text" class="attack-prompt-text"></span>
+        <div id="attack-prompt-actions" class="attack-prompt-actions"></div>
+      </div>
       <div id="game-message" class="game-message">Drag a card to play, attach, or attack.</div>
       <div id="mulligan-panel" class="mulligan-panel">
         <p id="mulligan-text">Keep or mulligan your opening hand?</p>
@@ -109,6 +113,6 @@
     </section>
   </main>
 
-  <script src="board.js?v=ability-system-11"></script>
+  <script src="board.js?v=ability-system-13"></script>
 </body>
 </html>

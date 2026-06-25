@@ -982,8 +982,8 @@ function syncModeFromState() {
   }
 }
 
-const STEP_DELAY_MS = 1800;           // base pause between automated actions
-const STEP_JITTER_MS = 400;           // random extra 0–400ms for organic feel
+const STEP_DELAY_MS = 1000;           // base pause between automated actions
+const STEP_JITTER_MS = 150;            // random extra 0–150ms for organic feel
 
 let autoStepTimer = null;
 let cpuThinking = false;
@@ -1029,11 +1029,11 @@ async function sendAction(action, opts = {}) {
     state = res.state;
     syncModeFromState();
     render();
-    scheduleAutoStep();
   } catch (err) {
     setMessage(`Action error: ${err.message}`);
   } finally {
     actionInFlight = false;
+    scheduleAutoStep();
   }
 }
 

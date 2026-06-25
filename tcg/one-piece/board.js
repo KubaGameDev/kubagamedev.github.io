@@ -1341,7 +1341,7 @@ els.passBtn.addEventListener("click", async () => {
 if (els.phaseBtn) {
   els.phaseBtn.addEventListener("click", async () => {
     if (!state || isCpuVsCpu || state.turn_player !== viewer || state.phase !== "refresh") return;
-    await sendAction({ type: "pass", player: viewer });
+    await sendAction({ type: "pass", player: viewer }, { single_step: true });
   });
 }
 

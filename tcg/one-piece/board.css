@@ -150,6 +150,51 @@ body {
   transition: 0.15s;
 }
 
+.center-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  overflow: hidden;
+}
+
+.phase-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  color: var(--accent);
+  font-size: clamp(0.75rem, 1.5vw, 0.95rem);
+  font-weight: 600;
+  animation: phaseBannerPulse 1.5s ease-in-out infinite;
+  min-height: 0;
+}
+
+@keyframes phaseBannerPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.phase-banner-icon {
+  display: inline-block;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.phase-banner-text {
+  white-space: nowrap;
+}
+
 .zone:hover, .zone.drop-hover {
   border-color: var(--accent);
   background: rgba(255, 215, 0, 0.08);

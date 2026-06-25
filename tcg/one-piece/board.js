@@ -947,11 +947,50 @@ function syncModeFromState() {
   }
 }
 
-async function sendAction(action) {
+const STEP_DELAY_MS = 1800;           // base pause between automated actions
+const STEP_JITTER_MS = 400;           // random extra 0–400ms for organic feel
+
+let autoStepTimer = null;
+let cpuThinking = false;
+
+function stepDelay() {
+  return STEP_DELAY_MS + Math.floor(Math.random() * STEP_JITTER_MS);
+}
+
+function showPhaseBanner(icon, text) {
+  const banner = document.getElementById("phase-banner");
+  const iconEl = document.getElementById("phase-banner-icon");
+  const textEl = document.getElementById("phase-banner-text");
+  if (!banner || !iconEl || !textEl) return;
+  iconEl.textContent = icon;
+  textEl.textContent = text;
+  banner.style.display = "";
+}
+
+function hidePhaseBanner() {
+  const banner = document.getElementById("phase-banner");
+  if (banner) banner.style.display = "none";
+}
+
+function phaseBannerTextFor(phase, turnPlayer) {
+  const actor = turnPlayer === "cpu" ? "CPU" : "Player";
+  switch (phase) {
+    case "refresh": return `${actor} is refreshing…`;
+    case "draw":    return `${actor} draws a card…`;
+    case "don":     return `${actor} adds DON!!…`;
+    case "main":    return turnPlayer === "cpu" ? "CPU is thinking 🔄" : "Your Main Phase";
+    default:        return `${actor} ${phase}…`;
+  }
+}
+
+async function sendAction(action, opts = {}) {
   if (actionInFlight) return;
   actionInFlight = true;
   try {
-    const res = await api(`/api/game/${gameId}/step`, action ? { action } : {});
+    const body = action ? { action } : {};
+    // Use single_step when backend should only execute one action iteration.
+    if (opts.single_step) body.single_step = true;
+    const res = await api(`/api/game/${gameId}/step`, body);
     state = res.state;
     syncModeFromState();
     render();
@@ -963,24 +1002,45 @@ async function sendAction(action) {
   }
 }
 
-let autoStepTimer = null;
 function scheduleAutoStep() {
   if (autoStepTimer) return;
-  const phase = state?.phase;
-  const isResourcePhase = phase === "refresh" || phase === "draw" || phase === "don";
-  // In PvCPU, only auto-step CPU turns. Player must manually click phase button.
-  const needsStep = isCpuVsCpu
-    ? (!state?.winner && phase !== "mulligan")
-    : (!state?.winner && phase !== "mulligan" && state?.turn_player === "cpu");
-  if (!needsStep) return;
+  if (!state || state.winner || state.phase === "mulligan") {
+    hidePhaseBanner();
+    return;
+  }
+
+  const isCpuTurn = state.turn_player === "cpu";
+  const isResourcePhase = state.phase === "refresh" || state.phase === "draw" || state.phase === "don";
+
+  // Determine whether we need an automated step
+  let needsStep = false;
+  if (isCpuVsCpu) {
+    needsStep = true;                       // both sides auto
+  } else if (isCpuTurn) {
+    needsStep = true;                       // CPU's turn auto-advances
+  } else if (isResourcePhase && state.phase !== "refresh") {
+    // Player resource phases (draw, don) auto-advance with banner after player clicks "Start Turn"
+    needsStep = true;
+  }
+
+  if (!needsStep) {
+    hidePhaseBanner();
+    return;
+  }
+
+  // Show thinking / phase banner
+  const bannerIcon = isCpuTurn && state.phase === "main" ? "🔄" : "⏳";
+  showPhaseBanner(bannerIcon, phaseBannerTextFor(state.phase, state.turn_player));
+
   autoStepTimer = setTimeout(() => {
     autoStepTimer = null;
-    if (!state || state.winner || state.phase === "mulligan") return;
-    // Only auto-step CPU turns or CPU-vs-CPU
-    if (isCpuVsCpu || state.turn_player === "cpu") {
-      sendAction(null).catch(() => {});
+    if (!state || state.winner || state.phase === "mulligan") {
+      hidePhaseBanner();
+      return;
     }
-  }, 600);
+    // Continue the same auto-step chain with single_step=true for paced actions
+    sendAction(null, { single_step: true }).catch(() => {});
+  }, stepDelay());
 }
 
 async function loadGame() {

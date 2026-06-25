@@ -96,21 +96,21 @@ body {
 }
 
 .opponent-side {
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
   grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-areas:
-    "don don don don"
-    "piles characters leader hand";
+    "don don don don don"
+    "piles characters stage leader hand";
   align-content: start;
 }
 
 .player-side {
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
   grid-template-rows: minmax(0, 1fr) auto auto;
   grid-template-areas:
-    ". leader characters piles"
-    "don don don don"
-    "hand hand hand hand";
+    ". leader stage characters piles"
+    "don don don don don"
+    "hand hand hand hand hand";
   align-content: end;
 }
 

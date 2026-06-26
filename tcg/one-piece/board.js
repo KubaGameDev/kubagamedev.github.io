@@ -1721,6 +1721,24 @@ document.querySelectorAll(".char-slot, .leader-zone, .don-zone").forEach((el) =>
   el.addEventListener("drop", onDrop);
 });
 
+// Log show/hide toggle — persists in localStorage for mobile-friendly play
+(function setupLogToggle() {
+  const panel = document.getElementById("info-panel");
+  const toggle = document.getElementById("log-toggle");
+  if (!panel || !toggle) return;
+  if (localStorage.getItem("optcg-log-hidden") === "1") {
+    panel.classList.add("collapsed");
+    toggle.textContent = "📜";
+    toggle.title = "Show logs";
+  }
+  toggle.addEventListener("click", () => {
+    const collapsed = panel.classList.toggle("collapsed");
+    toggle.textContent = collapsed ? "📜" : "👁️";
+    toggle.title = collapsed ? "Show logs" : "Hide logs";
+    localStorage.setItem("optcg-log-hidden", collapsed ? "1" : "0");
+  });
+})();
+
 els.backBtn.addEventListener("click", () => { location.href = "./"; });
 
 els.passBtn.addEventListener("click", async () => {

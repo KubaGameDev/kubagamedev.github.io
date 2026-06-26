@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OPTCG Playtest Board</title>
-  <link rel="stylesheet" href="board.css?v=ability-system-19" />
+  <link rel="stylesheet" href="board.css?v=ability-system-20" />
 </head>
 <body>
   <div id="loading" class="loading-overlay">Loading board...</div>
@@ -114,14 +114,17 @@
       </div>
     </section>
 
-    <aside class="info-panel">
+    <aside class="info-panel" id="info-panel">
       <div class="info-card">
-        <h2>Game Log</h2>
+        <div class="info-header">
+          <h2>Game Log</h2>
+          <button id="log-toggle" class="log-toggle" title="Show/hide logs">👁️</button>
+        </div>
         <div id="log" class="game-log"></div>
       </div>
     </aside>
   </main>
 
-  <script src="board.js?v=ability-system-19"></script>
+  <script src="board.js?v=ability-system-20"></script>
 </body>
 </html>

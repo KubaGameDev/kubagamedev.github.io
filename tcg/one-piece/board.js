@@ -1723,16 +1723,19 @@ document.querySelectorAll(".char-slot, .leader-zone, .don-zone").forEach((el) =>
 
 // Log show/hide toggle — persists in localStorage for mobile-friendly play
 (function setupLogToggle() {
+  const board = document.getElementById("board");
   const panel = document.getElementById("info-panel");
   const toggle = document.getElementById("log-toggle");
-  if (!panel || !toggle) return;
+  if (!board || !panel || !toggle) return;
   if (localStorage.getItem("optcg-log-hidden") === "1") {
+    board.classList.add("logs-collapsed");
     panel.classList.add("collapsed");
     toggle.textContent = "📜";
     toggle.title = "Show logs";
   }
   toggle.addEventListener("click", () => {
     const collapsed = panel.classList.toggle("collapsed");
+    board.classList.toggle("logs-collapsed", collapsed);
     toggle.textContent = collapsed ? "📜" : "👁️";
     toggle.title = collapsed ? "Show logs" : "Hide logs";
     localStorage.setItem("optcg-log-hidden", collapsed ? "1" : "0");

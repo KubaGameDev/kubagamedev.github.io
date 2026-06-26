@@ -96,6 +96,11 @@ body {
   gap: var(--gap);
   padding: var(--gap);
   overflow: hidden;
+  transition: grid-template-columns 0.25s ease;
+}
+
+.board.logs-collapsed {
+  grid-template-columns: minmax(0, 1fr) 38px;
 }
 
 .opponent-side { grid-column: 1; grid-row: 1; }
@@ -388,16 +393,20 @@ body {
 .info-panel {
   min-height: 0;
   overflow: hidden;
-  transition: grid-column 0.2s, max-width 0.2s;
-}
-
-.info-panel.collapsed {
-  max-width: 42px;
 }
 
 .info-panel.collapsed .game-log,
 .info-panel.collapsed .info-header h2 {
   display: none;
+}
+
+.info-panel.collapsed .info-card {
+  padding: 4px;
+  align-items: center;
+}
+
+.info-panel.collapsed .log-toggle {
+  align-self: center;
 }
 
 .info-header {

@@ -789,11 +789,25 @@ async function declareAttack(action) {
   if (actionInFlight) return;
   actionInFlight = true;
   try {
-    const res = await api(`/api/game/${gameId}/attack`, {
-      attacker_type: action.attacker_type,
-      attacker_index: action.attacker_index,
-      target: action.target,
-      target_index: action.target_index,
+    // Resolve attacker card_id from type+index
+    const me = state.players[viewer];
+    let attackerCardId = null;
+    if (action.attacker_type === "leader") {
+      attackerCardId = me.leader?.card_id || null;
+    } else if (action.attacker_type === "character" && action.attacker_index != null) {
+      attackerCardId = me.characters[action.attacker_index]?.card_id || null;
+    }
+    if (!attackerCardId) throw new Error("Could not resolve attacker card_id");
+
+    // Build target_zone for backend
+    let targetZone = "player"; // leader
+    if (action.target === "character" && action.target_index != null) {
+      targetZone = `character:${action.target_index}`;
+    }
+
+    const res = await api(`/api/game/${gameId}/attack/declare`, {
+      attacker_card_id: attackerCardId,
+      target_zone: targetZone,
     });
     state = res.state;
     syncModeFromState();
@@ -1445,7 +1459,8 @@ async function sendCounterChoice(counterCardId) {
   if (actionInFlight) return;
   actionInFlight = true;
   try {
-    const res = await api(`/api/game/${gameId}/attack/counter`, { counter_card_id: counterCardId });
+    const payload = counterCardId ? { counter_card_id: counterCardId } : { pass: true };
+    const res = await api(`/api/game/${gameId}/attack/counter`, payload);
     state = res.state;
     syncModeFromState();
     render();

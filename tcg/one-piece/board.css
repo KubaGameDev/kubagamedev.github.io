@@ -584,7 +584,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.8rem;
+  padding: 0.45rem 0.8rem;
   border-radius: 6px;
   background: rgba(255, 90, 90, 0.12);
   border: 1px solid rgba(255, 90, 90, 0.35);
@@ -594,6 +594,7 @@ body {
   animation: attackPromptPulse 1.5s ease-in-out infinite;
   min-height: 0;
   flex-wrap: wrap;
+  flex-direction: column;
 }
 
 .attack-prompt.active { display: flex; }
@@ -605,6 +606,23 @@ body {
 
 .attack-prompt-text {
   white-space: nowrap;
+}
+
+.attack-prompt-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: min(100%, 760px);
+  color: var(--text-muted);
+  font-size: clamp(0.68rem, 1.2vw, 0.82rem);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.attack-prompt-log .combat-feed-entry {
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .attack-prompt-actions {

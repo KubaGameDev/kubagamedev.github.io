@@ -1175,6 +1175,18 @@ function scheduleAutoStep() {
   }, stepDelay());
 }
 
+function combatFeedHtml() {
+  const combatWords = [
+    "attack", "attacking", "block", "counter", "battle", "damage", "trigger", "reveals", "math", "survives", "k.o", "passes"
+  ];
+  const entries = (state?.log || [])
+    .filter((entry) => combatWords.some((word) => String(entry).toLowerCase().includes(word)))
+    .slice(-5);
+  return entries
+    .map((entry) => `<div class="combat-feed-entry">${escapeHtml(entry)}</div>`)
+    .join("");
+}
+
 function attackBannerText(aa) {
   if (!aa) return "";
   const subphase = aa.subphase;
@@ -1292,6 +1304,7 @@ function render() {
 function renderAttackUI() {
   const promptEl = document.getElementById("attack-prompt");
   const textEl = document.getElementById("attack-prompt-text");
+  const logEl = document.getElementById("attack-prompt-log");
   const actionsEl = document.getElementById("attack-prompt-actions");
   if (!promptEl || !textEl || !actionsEl) return;
 
@@ -1304,12 +1317,14 @@ function renderAttackUI() {
     promptEl.style.display = "none";
     promptEl.className = "attack-prompt";
     textEl.textContent = "";
+    if (logEl) logEl.innerHTML = "";
     actionsEl.innerHTML = "";
     return;
   }
 
   promptEl.style.display = "";
   promptEl.className = "attack-prompt active";
+  if (logEl) logEl.innerHTML = combatFeedHtml();
 
   const attackerId = aa.attacker_card_id;
   const targetId = aa.blocker_card_id || aa.target_card_id;

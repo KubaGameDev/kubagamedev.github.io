@@ -1116,25 +1116,13 @@ function scheduleAutoStep() {
 
     if (pendingInput) {
       if (isCpuPending) {
-        // CPU needs to decide: auto-step after 1s
+        // CPU needs to decide: call /step which triggers auto_decide() on backend
         showPhaseBanner("⏳", attackBannerText(aa));
         autoStepTimer = setTimeout(() => {
           autoStepTimer = null;
           if (!state || !state.active_attack) return;
-          // CPU auto-passes on blocker/counter/trigger for MVP
-          const endpoint = pendingInput === "BLOCKER_DECLARATION" ? "blocker" :
-                           pendingInput === "COUNTER_PLAY" ? "counter" :
-                           pendingInput === "TRIGGER_ACTIVATION" ? "trigger" : null;
-          if (endpoint) {
-            const body = pendingInput === "BLOCKER_DECLARATION" ? { blocker_card_id: null } :
-                         pendingInput === "COUNTER_PLAY" ? { counter_card_id: null } :
-                         pendingInput === "TRIGGER_ACTIVATION" ? { activate: false } : {};
-            api(`/api/game/${gameId}/attack/${endpoint}`, body)
-              .then((res) => { state = res.state; syncModeFromState(); render(); scheduleAutoStep(); })
-              .catch(() => {});
-          } else {
-            loadGame();
-          }
+          // /step endpoint handles CPU auto-decide for attack subphases
+          sendAction(null, { single_step: true }).catch(() => {});
         }, 1000);
         return;
       } else {

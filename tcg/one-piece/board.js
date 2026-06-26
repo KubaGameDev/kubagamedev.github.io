@@ -87,11 +87,23 @@ function showAbilityToast(ability) {
     <div class="toast-body">
       <span class="toast-title">${escapeHtml(`[${typeLabel}] — ${ability.card_name}`)}</span>
       <span class="toast-text">${escapeHtml(ability.teaching_copy || ability.rule_text || '')}</span>
+      <div class="toast-actions">
+        <button class="btn danger toast-abort">Abort</button>
+      </div>
     </div>
   `;
 
   const timer = setTimeout(() => toast.remove(), 2500);
-  toast.addEventListener('click', () => { clearTimeout(timer); toast.remove(); });
+  toast.addEventListener('click', (ev) => {
+    if (ev.target.classList.contains('toast-abort')) {
+      ev.stopPropagation();
+      abilityState.mode = 'idle';
+      abilityState.pendingAction = null;
+      sendAbilityAbort(ability.ability_id);
+    }
+    clearTimeout(timer);
+    toast.remove();
+  });
   document.body.appendChild(toast);
 }
 
@@ -175,6 +187,7 @@ function showAbilityDecision(ability) {
         <div class="ability-modal-actions">
           <button class="btn primary" data-choice="confirm">Confirm</button>
           <button class="btn" data-choice="skip">Skip</button>
+          <button class="btn danger" data-choice="abort">Abort</button>
         </div>
       </div>
     </div>
@@ -205,6 +218,10 @@ function showAbilityDecision(ability) {
       } else {
         sendAbilityResolve(ability.ability_id, 'confirm', []);
       }
+    } else if (choice === 'abort') {
+      abilityState.mode = 'idle';
+      abilityState.pendingAction = null;
+      sendAbilityAbort(ability.ability_id);
     } else {
       sendAbilitySkip(ability.ability_id);
     }

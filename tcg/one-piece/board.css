@@ -118,11 +118,11 @@ body {
 }
 
 .opponent-side {
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
-    "don don piles piles hand"
-    "characters characters characters stage leader";
+    "hand piles piles don don"
+    "leader stage characters characters characters";
   align-content: start;
 }
 
@@ -130,9 +130,9 @@ body {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   grid-template-rows: minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "leader stage characters characters"
-    "piles don don don"
-    "hand hand hand hand";
+    "leader stage characters characters characters"
+    "piles don don don don"
+    "hand hand hand hand hand";
   align-content: end;
 }
 
@@ -231,7 +231,7 @@ body {
 
 .character-row {
   display: grid;
-  grid-template-columns: repeat(5, var(--card-w));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: clamp(0.12rem, 0.35vw, 0.24rem);
   min-height: 0;
   height: min(100%, calc(var(--card-h) + 18px));
@@ -242,7 +242,8 @@ body {
 
 .char-slot {
   aspect-ratio: 100 / 140;
-  width: min(100%, var(--card-w));
+  max-width: var(--card-w);
+  width: 100%;
   height: calc(var(--card-h) + 18px);
   min-height: 0;
   justify-self: center;

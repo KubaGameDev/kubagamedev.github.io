@@ -43,21 +43,31 @@ body {
 }
 
 .top-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.6rem;
   padding: 0.35rem 0.65rem;
-  min-height: 42px;
+  min-height: 64px;
   background: var(--panel);
   border-bottom: 1px solid var(--slot-border);
 }
 
 .game-title { font-weight: 700; font-size: clamp(0.9rem, 1.4vw, 1.05rem); }
 
+.top-status {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  overflow: hidden;
+}
+
 .turn-info {
-  margin-left: auto;
   font-size: clamp(0.78rem, 1.2vw, 0.95rem);
   color: var(--muted);
+  white-space: nowrap;
 }
 
 #phase { color: var(--accent); font-weight: 700; text-transform: uppercase; }
@@ -79,13 +89,19 @@ body {
 
 .board {
   display: grid;
-  grid-template-rows: minmax(0, 0.9fr) clamp(76px, 14vh, 108px) minmax(0, 1.25fr);
-  height: calc(100vh - 42px);
-  max-height: calc(100vh - 42px);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 27vw);
+  grid-template-rows: minmax(0, 0.9fr) clamp(58px, 9vh, 78px) minmax(0, 1.25fr);
+  height: calc(100vh - 64px);
+  max-height: calc(100vh - 64px);
   gap: var(--gap);
   padding: var(--gap);
   overflow: hidden;
 }
+
+.opponent-side { grid-column: 1; grid-row: 1; }
+.center-bar { grid-column: 1; grid-row: 2; }
+.player-side { grid-column: 1; grid-row: 3; }
+.info-panel { grid-column: 2; grid-row: 1 / 4; }
 
 .side {
   display: grid;
@@ -335,8 +351,8 @@ body {
 }
 
 .center-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(155px, 17vw, 220px) minmax(0, 1fr);
+  display: flex;
+  justify-content: center;
   gap: var(--gap);
   align-items: center;
   background: var(--panel);
@@ -350,6 +366,32 @@ body {
   font-size: clamp(0.72rem, 1vw, 0.9rem);
   color: var(--muted);
   text-align: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.info-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem;
+  border-radius: 10px;
+  background: rgba(19, 42, 63, 0.92);
+  border: 1px solid var(--slot-border);
+}
+
+.info-card h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: clamp(0.85rem, 1.2vw, 1.05rem);
 }
 
 .mulligan-panel {
@@ -364,11 +406,13 @@ body {
 .mulligan-actions { display: flex; gap: 0.5rem; }
 
 .game-log {
-  max-height: clamp(62px, 12vh, 94px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  font-size: clamp(0.62rem, 0.9vw, 0.78rem);
+  font-size: clamp(0.68rem, 0.95vw, 0.84rem);
   color: var(--muted);
   text-align: left;
+  padding-right: 0.25rem;
 }
 
 .game-log .entry { margin-bottom: 0.25rem; }
@@ -720,11 +764,14 @@ body {
     --gap: 0.25rem;
   }
 
-  .top-bar { min-height: 36px; padding: 0.25rem 0.45rem; }
-  .board { height: calc(100vh - 36px); max-height: calc(100vh - 36px); }
+  .top-bar {
+    min-height: 58px;
+    padding: 0.25rem 0.45rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .top-status { grid-column: 1 / -1; order: 2; }
+  .board { height: calc(100vh - 58px); max-height: calc(100vh - 58px); }
   .game-title { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .center-bar { grid-template-columns: minmax(0, 1fr) 145px minmax(0, 1fr); }
-  .game-log { max-height: 58px; }
 }
 
 /* ============================================

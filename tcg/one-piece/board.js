@@ -689,6 +689,14 @@ function openCardModal(card, context = {}) {
     if (context.source === "hand" && (card.card_type || "").toUpperCase() === "STAGE") {
       buttonsHtml += `<button class="btn primary modal-action" data-action="play" data-index="${context.index ?? 0}">Play Stage</button>`;
     }
+    if (context.source === "hand" && (card.card_type || "").toUpperCase() === "EVENT") {
+      const eventCost = Number(card.cost || 0);
+      const canAfford = Number(me?.don_active || 0) >= eventCost;
+      const playBtn = canAfford
+        ? `<button class="btn primary modal-action" data-action="play" data-index="${context.index ?? 0}">Play Event (${eventCost} DON)</button>`
+        : `<button class="btn" disabled title="Needs ${eventCost} active DON!!">Play Event (Needs ${eventCost} DON)</button>`;
+      buttonsHtml += playBtn;
+    }
     if ((context.source === "character" || context.source === "leader") && me && me.don_active > 0) {
       buttonsHtml += `<button class="btn primary modal-action" data-action="attach" data-target="${context.source}" data-index="${context.index ?? 0}">+1 DON!!</button>`;
     }
@@ -973,7 +981,7 @@ function allowDrop(ev) {
   }
   ev.preventDefault();
   const target = ev.currentTarget;
-  if (target.classList.contains("char-slot") || target.classList.contains("leader-zone") || target.classList.contains("don-zone")) {
+  if (target.classList.contains("char-slot") || target.classList.contains("leader-zone") || target.classList.contains("don-zone") || target.classList.contains("stage-zone")) {
     target.classList.add("drop-hover");
   }
 }
@@ -1015,6 +1023,18 @@ function dropToAction(data, zone) {
     const card = me.hand[parseInt(data.index, 10)];
     if (!card || (card.card_type || "").toUpperCase() !== "CHARACTER") return null;
     return { type: "play", player: viewer, card_index: parseInt(data.index, 10) };
+  }
+
+  // Events can be dropped anywhere on player's side to play them
+  if (data.source === "hand" && (zone.startsWith(`${viewer}-`) || zone === `${viewer}-leader` || zone.startsWith(`${viewer}-char-`) || zone === `${viewer}-stage`)) {
+    const card = me.hand[parseInt(data.index, 10)];
+    if (card && (card.card_type || "").toUpperCase() === "EVENT") {
+      const eventCost = Number(card.cost || 0);
+      if (me.don_active >= eventCost) {
+        return { type: "play", player: viewer, card_index: parseInt(data.index, 10) };
+      }
+      return null;
+    }
   }
 
   if (data.source === "don" && (zone === `${viewer}-leader` || zone.startsWith(`${viewer}-char-`))) {
@@ -1732,7 +1752,7 @@ function escapeHtml(s) {
 }
 
 // Event wiring
-document.querySelectorAll(".char-slot, .leader-zone, .don-zone").forEach((el) => {
+document.querySelectorAll(".char-slot, .leader-zone, .don-zone, .stage-zone").forEach((el) => {
   el.addEventListener("dragover", allowDrop);
   el.addEventListener("dragleave", leaveDrop);
   el.addEventListener("drop", onDrop);

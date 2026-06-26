@@ -814,6 +814,7 @@ async function declareAttack(action) {
     render();
   } catch (err) {
     setMessage(`Attack error: ${err.message}`);
+    await loadGame();
   } finally {
     actionInFlight = false;
     scheduleAutoStep();
@@ -1081,6 +1082,7 @@ async function sendAction(action, opts = {}) {
     render();
   } catch (err) {
     setMessage(`Action error: ${err.message}`);
+    await loadGame();
   } finally {
     actionInFlight = false;
     scheduleAutoStep();
@@ -1467,6 +1469,7 @@ async function sendBlockerChoice(blockerCardId) {
     render();
   } catch (err) {
     setMessage(`Blocker error: ${err.message}`);
+    await loadGame();
   } finally {
     actionInFlight = false;
     scheduleAutoStep();
@@ -1484,6 +1487,7 @@ async function sendCounterChoice(counterCardId) {
     render();
   } catch (err) {
     setMessage(`Counter error: ${err.message}`);
+    await loadGame();
   } finally {
     actionInFlight = false;
     scheduleAutoStep();
@@ -1500,6 +1504,7 @@ async function sendTriggerChoice(activate) {
     render();
   } catch (err) {
     setMessage(`Trigger error: ${err.message}`);
+    await loadGame();
   } finally {
     actionInFlight = false;
     scheduleAutoStep();

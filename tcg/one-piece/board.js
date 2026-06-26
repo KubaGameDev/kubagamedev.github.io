@@ -1309,8 +1309,8 @@ function renderAttackUI() {
   if (!promptEl || !textEl || !actionsEl) return;
 
   // Clear highlights
-  document.querySelectorAll('.blocker-highlight, .counter-highlight, .attacker-highlight')
-    .forEach(el => el.classList.remove('blocker-highlight', 'counter-highlight', 'attacker-highlight'));
+  document.querySelectorAll('.blocker-highlight, .counter-highlight, .attacker-highlight, .attack-target-highlight')
+    .forEach(el => el.classList.remove('blocker-highlight', 'counter-highlight', 'attacker-highlight', 'attack-target-highlight'));
 
   const aa = state?.active_attack;
   if (!aa) {
@@ -1331,9 +1331,11 @@ function renderAttackUI() {
   const defenderKey = aa.pending_player_id;
   const pending = aa.pending_input;
 
-  // Highlight attacker
+  // Highlight attacker and current attack target
   const attackerEl = document.querySelector(`[data-card-id="${attackerId}"]`);
   if (attackerEl) attackerEl.classList.add("attacker-highlight");
+  const targetEl = document.querySelector(`[data-card-id="${targetId}"]`);
+  if (targetEl) targetEl.classList.add("attack-target-highlight");
 
   if (pending === "BLOCKER_DECLARATION") {
     textEl.textContent = "Defender may block…";
@@ -1380,19 +1382,32 @@ function renderAttackUI() {
         // Event Counters: Event cards with "Counter" in effect text
         if (type === "EVENT") return (c.effect || "").toLowerCase().includes("counter");
         // Character Counters: Character cards with a printed Counter value
-        if (type === "CHARACTER") return !!(c.counter && c.counter !== "0" && c.counter !== "");
+        if (type === "CHARACTER") return !!(c.counter && String(c.counter) !== "0" && String(c.counter) !== "");
         return false;
       });
       actionsEl.innerHTML = "";
+      if (!counters.length) {
+        const none = document.createElement("span");
+        none.className = "attack-prompt-text";
+        none.textContent = "No Counter cards available in hand.";
+        actionsEl.appendChild(none);
+      }
       counters.forEach((c, idx) => {
         const btn = document.createElement("button");
         btn.className = "btn primary";
-        const isCharCounter = (c.card_type || "").toUpperCase() === "CHARACTER";
+        const type = (c.card_type || "").toUpperCase();
+        const isCharCounter = type === "CHARACTER";
+        const eventCost = Number(c.cost || 0);
+        const canPay = isCharCounter || Number(me.don_active || 0) >= eventCost;
+        if (!canPay) {
+          btn.disabled = true;
+          btn.title = `Needs ${eventCost} active DON!!`;
+        }
         btn.textContent = isCharCounter
-          ? `Discard ${c.card_name || c.card_code} as Counter (+${c.counter})`
-          : `Play ${c.card_name || c.card_code} as Counter`;
+          ? `Discard ${c.card_name || c.card_code} (+${c.counter})`
+          : `Play ${c.card_name || c.card_code} (${eventCost} DON)`;
         btn.addEventListener("click", () => {
-          sendCounterChoice(c.card_id);
+          if (canPay) sendCounterChoice(c.card_id);
         });
         actionsEl.appendChild(btn);
         // Highlight counter card in hand
@@ -1504,9 +1519,20 @@ function renderPhaseBtn() {
   }
 }
 
+function setLifeCountClass(el, count) {
+  if (!el) return;
+  el.classList.remove("life-high", "life-low", "life-zero");
+  if (count <= 0) el.classList.add("life-zero");
+  else if (count <= 2) el.classList.add("life-low");
+  else el.classList.add("life-high");
+}
+
 function renderPiles(player, side) {
   document.getElementById(`${side}-deck-count`).textContent = player.deck?.length ?? 0;
-  document.getElementById(`${side}-life-count`).textContent = player.life?.length ?? 0;
+  const lifeCount = document.getElementById(`${side}-life-count`);
+  const lifeValue = player.life?.length ?? 0;
+  lifeCount.textContent = lifeValue;
+  setLifeCountClass(lifeCount, lifeValue);
   const donCount = document.getElementById(`${side}-don-count`);
   donCount.textContent = formatDonCount(player);
   document.getElementById(`${side}-trash-count`).textContent = player.trash?.length ?? 0;

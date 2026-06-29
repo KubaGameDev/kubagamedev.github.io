@@ -368,6 +368,31 @@ body {
   50% { opacity: 1; transform: scale(1.08); }
 }
 
+/* PT-008: newly-played card glow animation */
+.card-wrapper.newly-played {
+  animation: newCardGlow 2s ease-out;
+}
+
+@keyframes newCardGlow {
+  0% { box-shadow: 0 0 20px #f59e0b; }
+  100% { box-shadow: none; }
+}
+
+/* PT-008: [On Play] badge on cards */
+.on-play-badge {
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  background: #f59e0b;
+  color: #000;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 6;
+}
+
 /* Persistent attack arrow overlay */
 #attack-arrow-svg {
   position: fixed;

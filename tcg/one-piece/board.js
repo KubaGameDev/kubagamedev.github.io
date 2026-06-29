@@ -47,6 +47,7 @@ window.abilityState = {
   chainQueue: [],
   toastTimer: null,
   blockerUsedThisTurn: new Set(),
+  lastPlayedCardId: null,
 };
 
 function closeCardModal() {
@@ -82,11 +83,14 @@ function showAbilityToast(ability) {
   toast.className = 'ability-toast';
   const imgSrc = ability.card_code ? getImageUrl({ card_code: ability.card_code, image_url: '' }) : '';
   const typeLabel = ability.type ? ability.type.replace(/_/g, ' ').toUpperCase() : 'ABILITY';
+  // PT-008: fallback teaching copy for on_play
+  const DEFAULT_ON_PLAY_COPY = "[On Play] triggers immediately when this Character enters the board. Choose a valid target to resolve its effect.";
+  const teachingCopy = ability.teaching_copy || (ability.type === 'on_play' ? DEFAULT_ON_PLAY_COPY : '');
   toast.innerHTML = `
     <img class="toast-art" src="${escapeHtml(imgSrc)}" alt="" onerror="this.style.display='none'"/>
     <div class="toast-body">
       <span class="toast-title">${escapeHtml(`[${typeLabel}] — ${ability.card_name}`)}</span>
-      <span class="toast-text">${escapeHtml(ability.teaching_copy || ability.rule_text || '')}</span>
+      <span class="toast-text">${escapeHtml(teachingCopy || ability.rule_text || '')}</span>
       <div class="toast-actions">
         <button class="btn danger toast-abort">Abort</button>
       </div>
@@ -425,8 +429,12 @@ function enterTargetSelect(sourceCard, validTargets) {
   });
 
   const typeLabel = sourceCard.abilityType ? sourceCard.abilityType.replace(/_/g, ' ').toUpperCase() : 'ABILITY';
+  // PT-008: clear header for On Play target selection
+  const header = typeLabel === 'ON PLAY'
+    ? `[On Play] — Choose target for ${sourceCard.card_name}`
+    : `Select a target for ${sourceCard.card_name}`;
   showAbilityBanner(
-    `Select a target for ${sourceCard.card_name}`,
+    header,
     `[${typeLabel}] — ${sourceCard.ruleText || ''}`,
     true
   );
@@ -580,6 +588,15 @@ function cardEl(card, opts = {}) {
       img.classList.add("active-character");
     }
   }
+
+  // PT-008: [On Play] badge on cards with [On Play] in effect
+  if (card.effect && card.effect.includes("[On Play]")) {
+    const onPlayBadge = document.createElement("span");
+    onPlayBadge.className = "on-play-badge";
+    onPlayBadge.textContent = "ON PLAY";
+    wrapper.appendChild(onPlayBadge);
+  }
+
   // Effective power overlay when different from printed power
   const basePower = parseInt(card.power, 10) || 0;
   const isMyTurn = state && state.turn_player === viewer;
@@ -1229,6 +1246,14 @@ async function sendAction(action, opts = {}) {
       const match = lastLog.match(/played event (.+?) \(cost (\d+)\)/i);
       if (match) {
         showEventToast(match[1], match[2]);
+      }
+      // PT-008: detect if a character with [On Play] was just played
+      const meKey = isCpuVsCpu ? "player" : viewer;
+      const me = state.players[meKey];
+      const characters = me?.characters || [];
+      const lastChar = characters[characters.length - 1];
+      if (lastChar && lastChar.effect && lastChar.effect.includes("[On Play]")) {
+        abilityState.lastPlayedCardId = lastChar.card_id;
       }
     }
   } catch (err) {
@@ -2106,6 +2131,14 @@ function renderCharacters(player, side) {
       const totalPower = (Number(c.power) || 0) + (c.attached_don?.length || 0) * 1000;
       const isMine = side === "player" && !isCpuVsCpu;
       const wrapper = cardEl(c, { source: isMine ? "character" : "opponent-char", index: i, overlay: `${totalPower}`, draggable: isMine });
+      // PT-008: glow newly played On Play character for 2s
+      if (abilityState.lastPlayedCardId && c.card_id === abilityState.lastPlayedCardId) {
+        wrapper.classList.add('newly-played');
+        setTimeout(() => {
+          wrapper.classList.remove('newly-played');
+          abilityState.lastPlayedCardId = null;
+        }, 2000);
+      }
       slot.appendChild(wrapper);
     }
   }

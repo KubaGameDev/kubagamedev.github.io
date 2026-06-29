@@ -1347,3 +1347,214 @@ body.ability-choosing-amount .board {
   transform: scale(1.06);
   box-shadow: 0 6px 18px rgba(0,0,0,0.55);
 }
+
+/* ============================================
+   PT-003: ATTACK VISUAL FEEDBACK
+   ============================================ */
+
+/* --- Attack Step Banner --- */
+.attack-step-banner {
+  position: fixed;
+  top: 60px; /* below the existing header */
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 20, 30, 0.95);
+  border: 1px solid #d64a43;
+  border-radius: 8px;
+  padding: 8px 16px;
+  z-index: 100;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.attack-step-label {
+  font-weight: 700;
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+.attack-step-items {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.attack-step-item {
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0.5;
+  background: transparent;
+  border: 1px solid #2d3b4f;
+  color: var(--muted);
+  font-size: 0.78rem;
+  transition: background 0.2s, color 0.2s, opacity 0.2s;
+}
+
+.attack-step-item.completed {
+  background: #22c55e;
+  opacity: 0.7;
+  color: #fff;
+  border-color: #22c55e;
+}
+
+.attack-step-item.active {
+  background: #f59e0b;
+  opacity: 1;
+  font-weight: bold;
+  color: #fff;
+  border-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.35);
+}
+
+.attack-step-item.pending {
+  background: transparent;
+  border: 1px solid #2d3b4f;
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+/* --- Attack Progress Bar --- */
+.attack-progress-bar {
+  position: fixed;
+  top: 36px; left: 0; right: 0;
+  z-index: 340;
+  padding: 0 0.6rem;
+  display: flex;
+  justify-content: center;
+}
+
+.attack-progress-track {
+  display: flex;
+  gap: 3px;
+  width: min(640px, 92vw);
+}
+
+.attack-progress-segment {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.08);
+  transition: background 0.3s;
+}
+
+.attack-progress-segment.completed {
+  background: var(--success);
+}
+
+.attack-progress-segment.active {
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(255,215,0,0.35);
+}
+
+/* --- Power Breakdown --- */
+.power-breakdown {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 330;
+  background: rgba(16, 38, 58, 0.95);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  font-size: 0.85rem;
+  min-width: min(320px, 90vw);
+}
+
+.power-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  flex: 1;
+}
+
+.power-name {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.power-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.power-modifier {
+  font-size: 0.72rem;
+  color: var(--success);
+}
+
+.power-vs {
+  font-weight: 800;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.power-result {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 0.2rem;
+}
+
+.power-result.win {
+  color: var(--success);
+}
+
+.power-result.lose {
+  color: var(--danger);
+}
+
+/* --- Attack Toast Container --- */
+.attack-toast-container {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 360;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(320px, 86vw);
+  pointer-events: none;
+}
+
+.attack-toast {
+  background: #10263a;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-left: 4px solid rgba(255, 215, 0, 0.35);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  animation: toastSlideIn 0.25s ease-out;
+  pointer-events: auto;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.attack-toast.declare { border-left-color: #ef4444; }
+.attack-toast.effect  { border-left-color: #f59e0b; }
+.attack-toast.blocker { border-left-color: #3b82f6; }
+.attack-toast.counter { border-left-color: #8b5cf6; }
+.attack-toast.damage  { border-left-color: #d64a43; }
+.attack-toast.trigger { border-left-color: #22c55e; }
+
+.attack-toast .toast-title {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.78rem;
+  margin-bottom: 0.15rem;
+  display: block;
+}
+
+@keyframes toastSlideIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}

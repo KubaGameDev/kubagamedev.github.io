@@ -1477,6 +1477,141 @@ function render() {
   renderAttackUI();
 }
 
+// ============================================
+// PT-003: Attack Visual Feedback
+// ============================================
+
+const ATTACK_STEPS = [
+  { key: "DECLARE_ATTACK", label: "Declare" },
+  { key: "WHEN_ATTACKING", label: "When Attacking" },
+  { key: "BLOCKER_DECLARATION", label: "Blocker" },
+  { key: "COUNTER_PHASE", label: "Counter" },
+  { key: "DAMAGE_RESOLUTION", label: "Damage" },
+  { key: "TRIGGER_ACTIVATION", label: "Trigger" },
+];
+
+let _lastAttackSubphase = null;
+let _lastToastSubphase = null;
+let _skipFirstAttackToast = true;
+
+function showAttackStepBanner(currentStep) {
+  const banner = document.getElementById("attack-step-banner");
+  const itemsEl = document.getElementById("attack-step-items");
+  if (!banner || !itemsEl) return;
+  banner.style.display = "";
+  const idx = ATTACK_STEPS.findIndex(s => s.key === currentStep);
+  itemsEl.innerHTML = ATTACK_STEPS.map((s, i) => {
+    let cls = "attack-step-item";
+    if (i < idx) cls += " completed";
+    else if (i === idx) cls += " active";
+    else cls += " pending";
+    return `<span class="${cls}">${s.label}</span>`;
+  }).join("");
+}
+
+function hideAttackStepBanner() {
+  const banner = document.getElementById("attack-step-banner");
+  const itemsEl = document.getElementById("attack-step-items");
+  if (banner) banner.style.display = "none";
+  if (itemsEl) itemsEl.innerHTML = "";
+}
+
+function updateAttackProgress(currentStep) {
+  const bar = document.getElementById("attack-progress-bar");
+  const track = document.getElementById("attack-progress-track");
+  if (!bar || !track) return;
+  bar.style.display = "";
+  const idx = ATTACK_STEPS.findIndex(s => s.key === currentStep);
+  track.innerHTML = ATTACK_STEPS.map((s, i) => {
+    let cls = "attack-progress-segment";
+    if (i < idx) cls += " completed";
+    else if (i === idx) cls += " active";
+    return `<div class="${cls}"></div>`;
+  }).join("");
+}
+
+function hideAttackProgress() {
+  const bar = document.getElementById("attack-progress-bar");
+  if (bar) bar.style.display = "none";
+}
+
+function showAttackToast(message, type = "declare") {
+  const container = document.getElementById("attack-toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = `attack-toast ${type}`;
+  toast.innerHTML = `<span class="toast-title">${escapeHtml(type.toUpperCase())}</span>${escapeHtml(message)}`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 2000);
+}
+
+function showPowerBreakdown(aa) {
+  const panel = document.getElementById("power-breakdown");
+  const attackerEl = document.getElementById("power-attacker");
+  const defenderEl = document.getElementById("power-defender");
+  if (!panel || !attackerEl || !defenderEl) return;
+  if (!aa || aa.resolved) { panel.style.display = "none"; return; }
+
+  const attackerName = aa.attacker_name || "Attacker";
+  const defenderName = aa.blocker_name || aa.target_name || "Defender";
+  const attackerPower = aa.attacker_power ?? "?";
+  const defenderPower = aa.defender_power ?? "?";
+  const mods = aa.power_modifiers || [];
+
+  const attackerMods = mods.filter(m => m.target === "attacker").map(m => `+${m.value} ${m.type}`).join(", ");
+  const defenderMods = mods.filter(m => m.target === "defender").map(m => `+${m.value} ${m.type}`).join(", ");
+
+  const result = aa.attacker_wins === true ? "⚔️ Attacker wins!" : aa.attacker_wins === false ? "🛡️ Defender survives!" : "";
+  const resultCls = aa.attacker_wins === true ? "win" : aa.attacker_wins === false ? "lose" : "";
+
+  attackerEl.innerHTML = `
+    <span class="power-name">${escapeHtml(attackerName)}</span>
+    <span class="power-value">${attackerPower}</span>
+    ${attackerMods ? `<span class="power-modifier">${escapeHtml(attackerMods)}</span>` : ""}
+  `;
+  defenderEl.innerHTML = `
+    <span class="power-name">${escapeHtml(defenderName)}</span>
+    <span class="power-value">${defenderPower}</span>
+    ${defenderMods ? `<span class="power-modifier">${escapeHtml(defenderMods)}</span>` : ""}
+    ${result ? `<span class="power-result ${resultCls}">${escapeHtml(result)}</span>` : ""}
+  `;
+  panel.style.display = "";
+}
+
+function hidePowerBreakdown() {
+  const panel = document.getElementById("power-breakdown");
+  if (panel) panel.style.display = "none";
+}
+
+function getAttackToastForSubphase(aa) {
+  const sub = aa.subphase;
+  const pending = aa.pending_input;
+  // Map pending_input back to subphase for toast consistency
+  if (pending === "BLOCKER_DECLARATION" || sub === "BLOCKER_DECLARATION") {
+    return { msg: "🛡️ Blocker step — choose a blocker or pass", type: "blocker" };
+  }
+  if (pending === "COUNTER_PLAY" || sub === "COUNTER_PHASE") {
+    return { msg: "⚡ Counter step — play a counter or pass", type: "counter" };
+  }
+  if (pending === "TRIGGER_ACTIVATION" || sub === "TRIGGER_ACTIVATION") {
+    return { msg: "🎯 Trigger check!", type: "trigger" };
+  }
+  if (sub === "DECLARE_ATTACK") {
+    return { msg: "⚔️ Attack declared!", type: "declare" };
+  }
+  if (sub === "WHEN_ATTACKING") {
+    return { msg: "🔥 When Attacking effect triggers!", type: "effect" };
+  }
+  if (sub === "DAMAGE_RESOLUTION") {
+    return { msg: "💥 Resolving damage...", type: "damage" };
+  }
+  // Legacy fallback mappings
+  if (sub === "attack_step") return { msg: "⚔️ Attack declared!", type: "declare" };
+  if (sub === "battle_resolution" || sub === "damage_resolution") return { msg: "💥 Resolving damage...", type: "damage" };
+  if (sub === "cleanup") return { msg: "🎯 Trigger check!", type: "trigger" };
+  return null;
+}
+
 function renderAttackUI() {
   const promptEl = document.getElementById("attack-prompt");
   const textEl = document.getElementById("attack-prompt-text");
@@ -1496,8 +1631,30 @@ function renderAttackUI() {
     textEl.textContent = "";
     if (logEl) logEl.innerHTML = "";
     actionsEl.innerHTML = "";
+    // PT-003: hide attack visual feedback when no active attack
+    hideAttackStepBanner();
+    hideAttackProgress();
+    hidePowerBreakdown();
+    _lastAttackSubphase = null;
+    _lastToastSubphase = null;
     return;
   }
+
+  // PT-003: show step banner, progress bar, and power breakdown
+  showAttackStepBanner(aa.subphase);
+  updateAttackProgress(aa.subphase);
+  showPowerBreakdown(aa);
+
+  // PT-003: show toast when subphase changes (skip on initial page load)
+  if (aa.subphase !== _lastToastSubphase) {
+    const toastInfo = getAttackToastForSubphase(aa);
+    if (toastInfo && !_skipFirstAttackToast) {
+      showAttackToast(toastInfo.msg, toastInfo.type);
+    }
+    _skipFirstAttackToast = false;
+    _lastToastSubphase = aa.subphase;
+  }
+  _lastAttackSubphase = aa.subphase;
 
   promptEl.style.display = "";
   promptEl.className = "attack-prompt active";
@@ -1653,6 +1810,13 @@ async function sendBlockerChoice(blockerCardId) {
     state = res.state;
     syncModeFromState();
     render();
+    // PT-003: blocker confirmation toast
+    const aa = state?.active_attack;
+    if (blockerCardId && aa?.blocker_name) {
+      showAttackToast(`🛡️ ${aa.blocker_name} blocks the attack! Target switched.`, "blocker");
+    } else if (!blockerCardId) {
+      showAttackToast("⏩ No blockers available — continuing to Counter step.", "blocker");
+    }
   } catch (err) {
     setMessage(`Blocker error: ${err.message}`);
     await loadGame();
@@ -1767,6 +1931,22 @@ async function sendCounterChoice(counterCardId) {
     state = res.state;
     syncModeFromState();
     render();
+    // PT-003: counter confirmation toast
+    const aa = state?.active_attack;
+    if (counterCardId) {
+      const meKey = isCpuVsCpu ? "player" : viewer;
+      const me = state.players[meKey];
+      const counterCard = (me?.trash || []).slice(-1)[0];
+      const boost = counterCard?.counter || 0;
+      const name = counterCard?.card_name || "Counter";
+      if (boost) {
+        showAttackToast(`⚡ ${name} played! +${boost} power.`, "counter");
+      } else {
+        showAttackToast(`⚡ ${name} played as Counter.`, "counter");
+      }
+    } else {
+      showAttackToast("⏩ No counters played — resolving damage.", "counter");
+    }
   } catch (err) {
     setMessage(`Counter error: ${err.message}`);
     await loadGame();

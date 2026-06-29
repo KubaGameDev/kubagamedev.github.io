@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Redirecting to OPTCG Board</title>
+  <meta http-equiv="refresh" content="0; url=/tcg/one-piece/board.html" />
+  <script>
+    const target = new URL('/tcg/one-piece/board.html', window.location.origin);
+    target.search = window.location.search;
+    target.hash = window.location.hash;
+    window.location.replace(target.toString());
+  </script>
+</head>
+<body>
+  <p>Redirecting to <a id="board-link" href="/tcg/one-piece/board.html">the OPTCG board</a>.</p>
+  <script>
+    document.getElementById('board-link').href = '/tcg/one-piece/board.html' + window.location.search + window.location.hash;
+  </script>
+</body>
+</html>

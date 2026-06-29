@@ -568,6 +568,18 @@ function cardEl(card, opts = {}) {
     ov.textContent = opts.overlay;
     wrapper.appendChild(ov);
   }
+  // Active / rested / NEW visual indicators
+  if (!opts.inHand && opts.source && (opts.source === "character" || opts.source === "opponent-char" || opts.source === "leader" || opts.source === "opponent-leader")) {
+    if (card.played_this_turn) {
+      const newBadge = document.createElement("span");
+      newBadge.className = "new-turn-indicator";
+      newBadge.textContent = "NEW";
+      wrapper.appendChild(newBadge);
+    }
+    if (!card.rested) {
+      img.classList.add("active-character");
+    }
+  }
   // Effective power overlay when different from printed power
   const basePower = parseInt(card.power, 10) || 0;
   const isMyTurn = state && state.turn_player === viewer;
@@ -584,6 +596,14 @@ function cardEl(card, opts = {}) {
     powerBadge.className = "power-badge";
     powerBadge.textContent = effectivePower;
     wrapper.appendChild(powerBadge);
+  }
+  // DON!! count badge on cards with attached DON
+  const attachedDonCount = card.attached_don?.length || 0;
+  if (attachedDonCount > 0) {
+    const donBadge = document.createElement("span");
+    donBadge.className = "don-badge";
+    donBadge.textContent = attachedDonCount;
+    wrapper.appendChild(donBadge);
   }
   // Attached DON pips under card
   const attachedDon = card.attached_don || [];
@@ -670,15 +690,23 @@ function placeholderSvg(card) {
   return svg;
 }
 
+function isAttackWindowActive() {
+  return Boolean(state?.active_attack || state?.pending_input);
+}
+
 function openCardModal(card, context = {}) {
   const existing = document.querySelector(".card-modal");
   if (existing) existing.remove();
+  if (isAttackWindowActive()) {
+    setMessage("Resolve the current attack timing window before using normal card actions.");
+    return;
+  }
   const modal = document.createElement("div");
   modal.className = "card-modal";
   const imgSrc = getImageUrl(card) || placeholderSvg(card);
 
   const isMine = context.source === "hand" || context.source === "character" || context.source === "leader";
-  const isMain = state && state.phase === "main" && state.turn_player === viewer && !state.winner && !isCpuVsCpu;
+  const isMain = state && state.phase === "main" && state.turn_player === viewer && !state.winner && !isCpuVsCpu && !isAttackWindowActive();
   const me = state ? state.players[viewer] : null;
 
   let buttonsHtml = "";
@@ -725,7 +753,7 @@ function openCardModal(card, context = {}) {
       <div class="card-modal-details">
         <strong>${escapeHtml(card?.card_name || card?.card_code || "Card")}</strong>
         <span>${escapeHtml(card?.card_code || "")} · ${escapeHtml(card?.card_type || "")}</span>
-        <span>Cost ${escapeHtml(card?.cost || "—")} · Power ${escapeHtml(card?.power || "—")} · Counter ${escapeHtml(card?.counter || "—")}</span>
+        <span>Cost ${escapeHtml(card?.cost || "—")} · Power ${escapeHtml(card?.power || "—")} · Counter ${escapeHtml(displayCounterValue(card))}</span>
         ${card?.effect ? `<p>${escapeHtml(card.effect)}</p>` : ""}
         ${card?.trigger ? `<p><strong>Trigger:</strong> ${escapeHtml(card.trigger)}</p>` : ""}
         <div class="modal-actions">${buttonsHtml}</div>
@@ -766,6 +794,21 @@ function openCardModal(card, context = {}) {
     }
   });
   document.body.appendChild(modal);
+}
+
+function displayCounterValue(card) {
+  if (!card || !Object.prototype.hasOwnProperty.call(card, "counter")) {
+    return "Unknown";
+  }
+  const rawValue = card.counter;
+  if (rawValue === null || rawValue === undefined) {
+    return "Unknown";
+  }
+  const normalized = String(rawValue).trim();
+  if (!normalized || normalized === "-" || normalized === "0") {
+    return "No printed counter";
+  }
+  return normalized;
 }
 
 function canAttackFromContext(card, context) {
@@ -892,6 +935,69 @@ function updateAttackLine(x, y) {
   line.setAttribute("y1", cy);
   line.setAttribute("x2", x);
   line.setAttribute("y2", y);
+}
+
+/* Persistent attack arrow during attack resolution */
+function drawPersistentAttackArrow(fromEl, toEl, resolved) {
+  clearPersistentAttackArrow();
+  let svg = document.getElementById("attack-arrow-svg");
+  if (!svg) {
+    svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.id = "attack-arrow-svg";
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    // Default red arrowhead
+    const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+    marker.setAttribute("id", "arrowhead");
+    marker.setAttribute("markerWidth", "10");
+    marker.setAttribute("markerHeight", "7");
+    marker.setAttribute("refX", "9");
+    marker.setAttribute("refY", "3.5");
+    marker.setAttribute("orient", "auto");
+    const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    polygon.setAttribute("points", "0 0, 10 3.5, 0 7");
+    polygon.setAttribute("fill", "#ff5a5a");
+    marker.appendChild(polygon);
+    defs.appendChild(marker);
+    // Resolved green arrowhead
+    const markerResolved = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+    markerResolved.setAttribute("id", "arrowhead-resolved");
+    markerResolved.setAttribute("markerWidth", "10");
+    markerResolved.setAttribute("markerHeight", "7");
+    markerResolved.setAttribute("refX", "9");
+    markerResolved.setAttribute("refY", "3.5");
+    markerResolved.setAttribute("orient", "auto");
+    const polygonResolved = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    polygonResolved.setAttribute("points", "0 0, 10 3.5, 0 7");
+    polygonResolved.setAttribute("fill", "#4ade80");
+    markerResolved.appendChild(polygonResolved);
+    defs.appendChild(markerResolved);
+    svg.appendChild(defs);
+    document.body.appendChild(svg);
+  }
+  if (resolved) {
+    svg.classList.add("resolved");
+    // Fade out when resolved
+    svg.classList.add("fading-out");
+    setTimeout(() => clearPersistentAttackArrow(), 400);
+    return;
+  } else {
+    svg.classList.remove("resolved");
+  }
+
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.classList.add("attack-arrow-line");
+  const r1 = fromEl.getBoundingClientRect();
+  const r2 = toEl.getBoundingClientRect();
+  line.setAttribute("x1", r1.left + r1.width / 2);
+  line.setAttribute("y1", r1.top + r1.height / 2);
+  line.setAttribute("x2", r2.left + r2.width / 2);
+  line.setAttribute("y2", r2.top + r2.height / 2);
+  svg.appendChild(line);
+}
+
+function clearPersistentAttackArrow() {
+  const svg = document.getElementById("attack-arrow-svg");
+  if (svg) svg.remove();
 }
 
 function clearGizmo() {
@@ -1098,10 +1204,10 @@ function hidePhaseBanner() {
 function phaseBannerTextFor(phase, turnPlayer) {
   const actor = turnPlayer === "cpu" ? "CPU" : "Player";
   switch (phase) {
-    case "refresh": return `${actor} is refreshing…`;
-    case "draw":    return `${actor} draws a card…`;
-    case "don":     return `${actor} adds DON!!…`;
-    case "main":    return turnPlayer === "cpu" ? "CPU is thinking 🔄" : "Your Main Phase";
+    case "refresh": return `${actor} Refresh Phase — all rested cards and DON!! are made active.`;
+    case "draw":    return `${actor} Draw Phase — ${actor} draws one card.`;
+    case "don":     return `${actor} DON!! Phase — ${actor} adds available DON!! to the cost area.`;
+    case "main":    return turnPlayer === "cpu" ? "CPU Main Phase — CPU is deciding, playing cards, attaching DON!!, attacking, or ending." : "Player Main Phase — play cards, attach DON!!, attack, or pass.";
     default:        return `${actor} ${phase}…`;
   }
 }
@@ -1117,6 +1223,14 @@ async function sendAction(action, opts = {}) {
     state = res.state;
     syncModeFromState();
     render();
+    // Show toast after successful event play
+    if (action && action.type === "play") {
+      const lastLog = (state.log || []).slice(-1)[0] || "";
+      const match = lastLog.match(/played event (.+?) \(cost (\d+)\)/i);
+      if (match) {
+        showEventToast(match[1], match[2]);
+      }
+    }
   } catch (err) {
     setMessage(`Action error: ${err.message}`);
     await loadGame();
@@ -1124,6 +1238,21 @@ async function sendAction(action, opts = {}) {
     actionInFlight = false;
     scheduleAutoStep();
   }
+}
+
+function showEventToast(name, cost) {
+  const toasts = document.querySelectorAll('.ability-toast');
+  if (toasts.length >= 3) toasts[0].remove();
+  const toast = document.createElement('div');
+  toast.className = 'ability-toast';
+  toast.innerHTML = `
+    <div class="toast-body">
+      <span class="toast-title">EVENT PLAYED</span>
+      <span class="toast-text">${escapeHtml(name)} — paid ${cost} DON!!</span>
+    </div>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
 }
 
 function scheduleAutoStep() {
@@ -1230,22 +1359,25 @@ function attackBannerText(aa) {
   if (!aa) return "";
   const subphase = aa.subphase;
   const pending = aa.pending_input;
+  const attacker = aa.attacker_name || "Attacker";
+  const defender = aa.defender_name || aa.target_name || "target";
+  const attackerPower = aa.attacker_power ?? "?";
+  const defenderPower = aa.defender_power ?? "?";
+  const chooser = aa.pending_player_id === "cpu" ? "CPU" : aa.pending_player_id === "player" ? "Player" : "Defender";
   if (aa.resolved) {
-    const attacker = aa.attacker_name || "Attacker";
-    const defender = aa.defender_name || "Defender";
-    const attackerPower = aa.attacker_power ?? "?";
-    const defenderPower = aa.defender_power ?? "?";
     if (aa.attacker_wins) {
       return `⚔️ ${attacker} (${attackerPower}) vs ${defender} (${defenderPower}) → ${attacker} wins! ${defender} is K.O.'d`;
     }
     return `⚔️ ${attacker} (${attackerPower}) vs ${defender} (${defenderPower}) → ${defender} survives!`;
   }
-  if (pending === "BLOCKER_DECLARATION") return "Defender may block…";
-  if (pending === "COUNTER_PLAY") return "Defender may counter…";
-  if (pending === "TRIGGER_ACTIVATION") return "Trigger activation available…";
-  if (subphase === "attack_step") return "When Attacking effects resolve…";
-  if (subphase === "battle_resolution" || subphase === "damage_resolution") return "Battle resolution…";
-  return "Resolving attack…";
+  const matchup = `${attacker} (${attackerPower}) attacking ${defender} (${defenderPower})`;
+  if (pending === "BLOCKER_DECLARATION") return `Block Step — ${matchup}. ${chooser} chooses whether to declare a Blocker.`;
+  if (pending === "COUNTER_PLAY") return `Counter Step — ${matchup}. ${chooser} chooses whether to use counters.`;
+  if (pending === "TRIGGER_ACTIVATION") return `Damage/Trigger Step — ${matchup}. ${chooser} chooses whether to activate the Life trigger.`;
+  if (subphase === "attack_step") return `Attack Step — ${matchup}. When Attacking effects resolve now.`;
+  if (subphase === "battle_resolution") return `Battle Resolution — compare ${attackerPower} attack power against ${defenderPower} defender power.`;
+  if (subphase === "damage_resolution") return `Damage Resolution — leader damage and Trigger checks happen now.`;
+  return `Resolving attack — ${matchup}.`;
 }
 
 async function loadGame() {
@@ -1288,8 +1420,8 @@ function render() {
   const me = state.players[meKey];
   const opp = state.players[oppKey];
 
-  els.turnNumber.textContent = state.turn_number;
-  els.turnPlayer.textContent = state.turn_player === "player" ? "Player" : "CPU";
+  els.turnNumber.textContent = `Global Turn ${state.turn_number}`;
+  els.turnPlayer.textContent = `Active Player: ${state.turn_player === "player" ? "Player" : "CPU"}`;
   els.phase.textContent = state.phase;
 
   renderPiles(me, "player");
@@ -1311,10 +1443,15 @@ function render() {
   renderLog();
   renderPhaseBtn();
 
-  // Disable normal interactions during ability resolution
+  // Disable normal interactions during ability or attack resolution
   const isResolving = abilityState.mode !== 'idle';
-  els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main" || isResolving;
+  const isAttackResolving = isAttackWindowActive();
+  if (isAttackResolving) {
+    closeCardModal();
+  }
+  els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main" || isResolving || isAttackResolving;
   document.body.classList.toggle('ability-modal-open', isResolving);
+  document.body.classList.toggle('attack-window-open', isAttackResolving);
 
   if (state.phase === "mulligan") {
     const needMulligan = !state.mulligan_done?.[meKey];
@@ -1325,7 +1462,7 @@ function render() {
       : "Waiting for opponent mulligan...";
   } else {
     els.mulliganPanel.classList.remove("active");
-    els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main" || isResolving;
+    els.passBtn.disabled = isCpuVsCpu || state.turn_player !== viewer || state.phase !== "main" || isResolving || isAttackResolving;
   }
 
   if (state.winner) {
@@ -1347,9 +1484,10 @@ function renderAttackUI() {
   const actionsEl = document.getElementById("attack-prompt-actions");
   if (!promptEl || !textEl || !actionsEl) return;
 
-  // Clear highlights
+  // Clear highlights and persistent arrow
   document.querySelectorAll('.blocker-highlight, .counter-highlight, .attacker-highlight, .attack-target-highlight')
     .forEach(el => el.classList.remove('blocker-highlight', 'counter-highlight', 'attacker-highlight', 'attack-target-highlight'));
+  clearPersistentAttackArrow();
 
   const aa = state?.active_attack;
   if (!aa) {
@@ -1376,8 +1514,13 @@ function renderAttackUI() {
   const targetEl = document.querySelector(`[data-card-id="${targetId}"]`);
   if (targetEl) targetEl.classList.add("attack-target-highlight");
 
+  // Draw persistent attack arrow from attacker to target
+  if (attackerEl && targetEl) {
+    drawPersistentAttackArrow(attackerEl, targetEl, aa.resolved);
+  }
+
   if (pending === "BLOCKER_DECLARATION") {
-    textEl.textContent = "Defender may block…";
+    textEl.textContent = attackBannerText(aa);
     if (defenderKey === viewer) {
       // Find valid blockers among active characters
       const meKey = isCpuVsCpu ? "player" : viewer;
@@ -1388,6 +1531,12 @@ function renderAttackUI() {
         return isBlocker && !c.rested;
       });
       actionsEl.innerHTML = "";
+      if (!blockers.length) {
+        const none = document.createElement("span");
+        none.className = "attack-prompt-text";
+        none.textContent = "No legal blockers available — continue.";
+        actionsEl.appendChild(none);
+      }
       blockers.forEach((b) => {
         const btn = document.createElement("button");
         btn.className = "btn primary";
@@ -1412,7 +1561,7 @@ function renderAttackUI() {
   }
 
   if (pending === "COUNTER_PLAY") {
-    textEl.textContent = "Defender may counter…";
+    textEl.textContent = attackBannerText(aa);
     if (defenderKey === viewer) {
       const meKey = isCpuVsCpu ? "player" : viewer;
       const me = state.players[meKey];
@@ -1428,7 +1577,7 @@ function renderAttackUI() {
       if (!counters.length) {
         const none = document.createElement("span");
         none.className = "attack-prompt-text";
-        none.textContent = "No Counter cards available in hand.";
+        none.textContent = "No usable counters available — continue.";
         actionsEl.appendChild(none);
       }
       counters.forEach((c, idx) => {
@@ -1513,11 +1662,107 @@ async function sendBlockerChoice(blockerCardId) {
   }
 }
 
+async function promptCounterTarget(counterCard) {
+  return new Promise((resolve) => {
+    const meKey = isCpuVsCpu ? "player" : viewer;
+    const me = state.players[meKey];
+    const leader = me?.leader;
+    const characters = me?.characters || [];
+
+    // Remove any existing modal
+    const existing = document.querySelector(".counter-target-modal");
+    if (existing) existing.remove();
+
+    const modal = document.createElement("div");
+    modal.className = "counter-target-modal card-modal";
+
+    const panel = document.createElement("div");
+    panel.className = "card-modal-panel counter-target-panel";
+    panel.innerHTML = `<button class="card-modal-close" type="button">×</button><div class="counter-target-header"><strong>Select target for ${escapeHtml(counterCard.card_name || counterCard.card_code)}</strong></div>`;
+
+    const grid = document.createElement("div");
+    grid.className = "counter-target-grid";
+
+    const targets = [];
+    if (leader) targets.push({ card: leader, label: "Leader" });
+    characters.forEach((c, i) => {
+      if (c) targets.push({ card: c, label: `Character ${i + 1}` });
+    });
+
+    if (targets.length === 0) {
+      const emptyMsg = document.createElement("p");
+      emptyMsg.style.color = "var(--muted)";
+      emptyMsg.textContent = "No valid targets available.";
+      grid.appendChild(emptyMsg);
+    }
+
+    targets.forEach(({ card, label }) => {
+      const wrapper = cardEl(card, { draggable: false, overlay: label });
+      wrapper.style.cursor = "pointer";
+      wrapper.addEventListener("click", () => {
+        modal.remove();
+        resolve(card.card_id);
+      });
+      const item = document.createElement("div");
+      item.className = "counter-target-item";
+      item.appendChild(wrapper);
+      grid.appendChild(item);
+    });
+
+    panel.appendChild(grid);
+    modal.appendChild(document.createElement("div")).className = "card-modal-backdrop";
+    modal.appendChild(panel);
+
+    const cleanup = () => {
+      modal.remove();
+      resolve(null);
+    };
+
+    modal.querySelector(".card-modal-close").addEventListener("click", cleanup);
+    modal.addEventListener("click", (ev) => {
+      if (ev.target.classList.contains("card-modal") || ev.target.classList.contains("card-modal-backdrop")) {
+        cleanup();
+      }
+    });
+    document.addEventListener("keydown", function onEsc(ev) {
+      if (ev.key === "Escape") {
+        cleanup();
+        document.removeEventListener("keydown", onEsc);
+      }
+    });
+
+    document.body.appendChild(modal);
+  });
+}
+
 async function sendCounterChoice(counterCardId) {
   if (actionInFlight) return;
   actionInFlight = true;
   try {
-    const payload = counterCardId ? { counter_card_id: counterCardId } : { pass: true };
+    let payload;
+    if (!counterCardId) {
+      payload = { pass: true };
+    } else {
+      // Find the counter card to check if it's an event counter
+      const meKey = isCpuVsCpu ? "player" : viewer;
+      const me = state.players[meKey];
+      const counterCard = (me.hand || []).find(c => c.card_id === counterCardId);
+      const isEventCounter = counterCard && (counterCard.card_type || "").toUpperCase() === "EVENT";
+
+      if (isEventCounter) {
+        // Prompt for target selection
+        const targetCardId = await promptCounterTarget(counterCard);
+        if (!targetCardId) {
+          // User cancelled target selection; abort counter without sending
+          actionInFlight = false;
+          return;
+        }
+        payload = { counter_card_id: counterCardId, target_card_id: targetCardId };
+      } else {
+        // Character counter — discard, no target needed
+        payload = { counter_card_id: counterCardId };
+      }
+    }
     const res = await api(`/api/game/${gameId}/attack/counter`, payload);
     state = res.state;
     syncModeFromState();

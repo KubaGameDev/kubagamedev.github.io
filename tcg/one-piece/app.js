@@ -2,7 +2,7 @@ const STORAGE_KEY = "jumpkat.optcg.collection.v1";
 const DECK_STORAGE_KEY = "jumpkat.optcg.deck.v1";
 const BACKEND_STORAGE_KEY = "jumpkat.optcg.backendUrl.v1";
 const SEED_URL = "./data/collection.seed.json";
-const STARTER_DECKS_URL = "./data/starter-decks.mvp.json";
+const STARTER_DECKS_URL = "./data/starter-decks.json";
 const CONFIG = window.OPTCG_CONFIG || {};
 let API_BASE_URL = String(localStorage.getItem(BACKEND_STORAGE_KEY) || CONFIG.apiBaseUrl || "").replace(/\/$/, "");
 let USE_API = Boolean(API_BASE_URL);
@@ -114,6 +114,11 @@ const elements = {
   saveBackendUrlButton: document.getElementById("save-backend-url-button"),
   useLocalBackendButton: document.getElementById("use-local-backend-button"),
   backendStatus: document.getElementById("backend-status"),
+  backendCollapsedStatus: document.getElementById("backend-collapsed-status"),
+  toggleBackendPanel: document.getElementById("toggle-backend-panel"),
+  backendPanel: document.querySelector(".backend-panel"),
+  backendControls: document.getElementById("backend-controls"),
+  summaryGrid: document.querySelector(".summary-grid"),
   navButtons: document.querySelectorAll(".app-nav-button"),
   sections: document.querySelectorAll(".app-section"),
   leaderSelect: document.getElementById("leader-select"),
@@ -137,14 +142,21 @@ const elements = {
   simTurnNumber: document.getElementById("sim-turn-number"),
   simPlayerZones: document.getElementById("sim-player-zones"),
   simPlayerField: document.getElementById("sim-player-field"),
+  simulationTable: document.getElementById("simulation-table"),
   simActions: document.getElementById("sim-actions"),
+  simActionsArticle: document.getElementById("sim-actions-article"),
+  simRefreshButton: document.getElementById("sim-refresh-button"),
   simDrawButton: document.getElementById("sim-draw-button"),
   simDonButton: document.getElementById("sim-don-button"),
   simPlayButton: document.getElementById("sim-play-button"),
+  simAttachButton: document.getElementById("sim-attach-button"),
   simAttackButton: document.getElementById("sim-attack-button"),
   simActionNote: document.getElementById("sim-action-note"),
   simLog: document.getElementById("sim-log"),
   batchSimButton: document.getElementById("batch-sim-button"),
+  resetSimButton: document.getElementById("reset-sim-button"),
+  playtestSetup: document.getElementById("playtest-setup"),
+  playtestRunning: document.getElementById("playtest-running"),
   matchResultsSection: document.getElementById("match-results-section"),
   playerWinsCount: document.getElementById("player-wins-count"),
   cpuWinsCount: document.getElementById("cpu-wins-count"),
@@ -156,10 +168,12 @@ const elements = {
   playerStarterDeckSelect: document.getElementById("player-starter-deck-select"),
   playerLeaderSelect: document.getElementById("player-leader-select"),
   playerDeckSummary: document.getElementById("player-deck-summary"),
+  playerDeckHeading: document.getElementById("player-deck-heading"),
   cpuDeckSourceSelect: document.getElementById("cpu-deck-source-select"),
   cpuStarterDeckSelect: document.getElementById("cpu-starter-deck-select"),
   cpuLeaderSelect: document.getElementById("cpu-leader-select"),
   cpuDeckSummary: document.getElementById("cpu-deck-summary"),
+  cpuDeckHeading: document.getElementById("cpu-deck-heading"),
   simModeSelect: document.getElementById("sim-mode-select"),
   simModeNote: document.getElementById("sim-mode-note"),
 };
@@ -481,25 +495,30 @@ function setBackendUrl(url) {
   renderBackendStatus();
 }
 
-async function renderBackendStatus() {
+function renderBackendStatus() {
   if (elements.backendUrlInput) elements.backendUrlInput.value = API_BASE_URL;
-  if (!elements.backendStatus) return;
-  if (!USE_API) {
-    elements.backendStatus.textContent = "Browser-local mode. Deck validation can do a basic local check; playtesting needs the backend.";
-    return;
-  }
-  elements.backendStatus.textContent = `Checking ${API_BASE_URL}...`;
+  _backendStatusText().then((text) => {
+    if (elements.backendCollapsedStatus) elements.backendCollapsedStatus.textContent = text;
+    if (elements.backendStatus) elements.backendStatus.textContent = text;
+  });
+}
+
+async function _backendStatusText() {
+  if (!USE_API) return "Browser-local mode. Simulation endpoints need a backend URL.";
   try {
     const payload = await apiFetch("/api/health", { method: "GET" });
-    elements.backendStatus.textContent = `Connected: ${payload.service || "backend"} is ${payload.status || "available"}.`;
+    return `Connected: ${payload.service || "backend"} is ${payload.status || "available"}.`;
   } catch (error) {
-    elements.backendStatus.textContent = `Backend not reachable: ${error.message}`;
+    return `Backend not reachable: ${error.message}`;
   }
 }
 
 function renderNavigation() {
   elements.sections.forEach((section) => section.classList.toggle("is-active", section.id === state.activeSection));
   elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.section === state.activeSection));
+  if (elements.summaryGrid) {
+    elements.summaryGrid.classList.toggle("is-hidden", state.activeSection !== "collection-section");
+  }
 }
 
 function renderDeckBuilder() {
@@ -529,26 +548,43 @@ function renderDeckBuilder() {
   if (!deck.cards.length) {
     elements.deckList.className = "deck-list empty-state";
     elements.deckList.textContent = "No cards added yet.";
-  } else if (state.deck.presetDeck) {
-    elements.deckList.className = "deck-list";
-    elements.deckList.innerHTML = deck.cards.map((card) => `
-      <div class="deck-list-row">
-        <span><strong>${escapeHtml(card.quantity)}× ${escapeHtml(card.card_code || "—")}</strong> ${escapeHtml(card.card_name || "Unnamed card")}</span>
-        <span>${escapeHtml(card.card_type || "")}</span>
-      </div>`).join("");
   } else {
     elements.deckList.className = "deck-list";
-    elements.deckList.innerHTML = state.deck.cards.map((entry) => {
+    // Group duplicate cards by code so we show one tile with a quantity bubble.
+    const grouped = new Map();
+    const items = state.deck.presetDeck ? deck.cards : state.deck.cards.map((entry) => {
       const row = state.rows.find((candidate) => rowId(candidate) === entry.rowId);
-      return `
-        <div class="deck-list-row">
-          <span><strong>${escapeHtml(entry.quantity)}× ${escapeHtml(row?.card_code || "Missing")}</strong> ${escapeHtml(row?.card_name || "Card not found")}</span>
-          <button class="icon-button small" type="button" data-remove-deck-card="${escapeHtml(entry.rowId)}" aria-label="Remove card">×</button>
-        </div>`;
-    }).join("");
+      return {
+        card_code: row?.card_code || entry.rowId,
+        card_name: row?.card_name || "Card not found",
+        quantity: entry.quantity,
+        image_url: row?.official_image_url || row?.image_url || "",
+        rowId: entry.rowId,
+      };
+    });
+    for (const card of items) {
+      const code = card.card_code || card.rowId;
+      const existing = grouped.get(code);
+      if (existing) {
+        existing.quantity += Number(card.quantity || 0);
+      } else {
+        grouped.set(code, { ...card, quantity: Number(card.quantity || 0) });
+      }
+    }
+    elements.deckList.innerHTML = Array.from(grouped.values()).map((card) => `
+      <div class="deck-card-tile" title="${escapeHtml(card.card_name || card.card_code || "")} (×${card.quantity})">
+        ${card.quantity > 1 ? `<span class="deck-card-qty">${escapeHtml(String(card.quantity))}</span>` : ""}
+        <img class="deck-card-img" src="${escapeHtml(card.image_url || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')}" alt="${escapeHtml(card.card_name || card.card_code || "Card")}" loading="lazy" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='">
+        <span class="deck-card-name">${escapeHtml(card.card_name || card.card_code || "Unnamed")}</span>
+        ${!state.deck.presetDeck ? `<button class="icon-button small" type="button" data-remove-deck-card="${escapeHtml(card.rowId || card.card_code)}" aria-label="Remove card">×</button>` : ""}
+      </div>`).join("");
     elements.deckList.querySelectorAll("[data-remove-deck-card]").forEach((button) => {
       button.addEventListener("click", () => {
-        state.deck.cards = state.deck.cards.filter((entry) => entry.rowId !== button.dataset.removeDeckCard);
+        const key = button.dataset.removeDeckCard;
+        state.deck.cards = state.deck.cards.filter((entry) => {
+          const row = state.rows.find((candidate) => rowId(candidate) === entry.rowId);
+          return (row?.card_code || entry.rowId) !== key;
+        });
         state.validation = null;
         saveDeck();
         renderAll();
@@ -572,72 +608,154 @@ function renderSimulation() {
   const game = state.game;
   const isCpuVsCpu = state.playtest.simMode === "cpu-vs-cpu";
   const isPlayerTurn = game && game.turn_player === "player";
-  
-  elements.passTurnButton.disabled = !game || isCpuVsCpu || !isPlayerTurn;
-  elements.simDrawButton.disabled = !game || !isPlayerTurn || game.phase !== "draw";
-  elements.simDonButton.disabled = !game || !isPlayerTurn;
-  elements.simPlayButton.disabled = !game || !isPlayerTurn;
-  elements.simAttackButton.disabled = !game || !isPlayerTurn;
-  
+
+  // Hide Actions panel in CPU vs CPU mode.
+  if (elements.simActionsArticle) {
+    elements.simActionsArticle.classList.toggle("is-hidden", isCpuVsCpu);
+  }
+
+  // Disable phase-gated player buttons.
+  elements.passTurnButton.disabled = !game || isCpuVsCpu || !isPlayerTurn || game.phase !== "main";
+  elements.simRefreshButton.disabled = !game || !isPlayerTurn || game.phase !== "refresh" || isCpuVsCpu;
+  elements.simDrawButton.disabled = !game || !isPlayerTurn || game.phase !== "draw" || isCpuVsCpu;
+  elements.simDonButton.disabled = !game || !isPlayerTurn || game.phase !== "don" || isCpuVsCpu;
+  elements.simPlayButton.disabled = !game || !isPlayerTurn || game.phase !== "main" || isCpuVsCpu;
+  elements.simAttachButton.disabled = !game || !isPlayerTurn || game.phase !== "main" || isCpuVsCpu;
+  elements.simAttackButton.disabled = !game || !isPlayerTurn || game.phase !== "main" || isCpuVsCpu;
+
   if (!game) {
-    elements.simPlayerField.className = "field-grid empty-state";
-    elements.simPlayerField.textContent = "No characters on field.";
+    if (elements.simulationTable) {
+      elements.simulationTable.className = "simulation-table empty-state";
+      elements.simulationTable.textContent = "Start a sim to view both players' boards.";
+    }
     elements.simActionNote.textContent = "Start a game to see available actions.";
     return;
   }
-  
+
+  const labels = isCpuVsCpu ? { player: "CPU 1", cpu: "CPU 2" } : { player: "Player", cpu: "CPU" };
+  const turnPlayerLabel = labels[game.turn_player];
+
   if (game.winner) {
-    elements.simActionNote.textContent = `Game over! ${game.winner === "player" ? "Player" : "CPU"} wins!`;
+    const winnerLabel = labels[game.winner];
+    elements.simActionNote.textContent = `Game over! ${winnerLabel} wins!`;
     elements.simActions.className = "action-grid game-over";
   } else if (isCpuVsCpu) {
     elements.simActionNote.textContent = "CPU vs CPU: simulation running automatically...";
   } else if (isPlayerTurn) {
     elements.simActionNote.textContent = `Your turn (Turn ${game.turn_number}, Phase: ${game.phase}). Choose an action.`;
   } else {
-    elements.simActionNote.textContent = "CPU is thinking...";
+    elements.simActionNote.textContent = `${labels.cpu} is thinking...`;
   }
-  
-  elements.simTurnPlayer.textContent = game.turn_player || "—";
+
+  elements.simTurnPlayer.textContent = turnPlayerLabel;
   elements.simPhase.textContent = game.phase || "—";
   elements.simTurnNumber.textContent = String(game.turn_number || "—");
-  
-  const player = game.players?.player || {};
-  elements.simPlayerZones.className = "zone-grid";
-  elements.simPlayerZones.innerHTML = [
-    { key: "hand", label: "Hand" },
-    { key: "life", label: "Life" },
-    { key: "deck", label: "Deck" },
-    { key: "trash", label: "Trash" },
-  ].map(({ key, label }) => `
-    <div class="zone-card"><span>${label}</span><strong>${(player[key] || []).length}</strong></div>
-  `).join("");
-  
-  const donInfo = `<div class="zone-card"><span>DON!!</span><strong>${player.don_active || 0}/${player.don_total || 0}</strong></div>`;
-  elements.simPlayerZones.insertAdjacentHTML("beforeend", donInfo);
-  
-  // Render player field
-  const characters = player.characters || [];
-  if (!characters.length) {
-    elements.simPlayerField.className = "field-grid empty-state";
-    elements.simPlayerField.textContent = "No characters on field.";
-  } else {
-    elements.simPlayerField.className = "field-grid";
-    elements.simPlayerField.innerHTML = characters.map((char, i) => `
-      <div class="character-card" data-character-index="${i}">
-        <strong>${escapeHtml(char.card_name || "Unknown")}</strong>
-        <span>Cost: ${escapeHtml(char.cost || "0")} | Power: ${escapeHtml(char.power || "0")}</span>
-        <button class="button tertiary sim-attack-character" type="button" data-index="${i}" ${!isPlayerTurn ? "disabled" : ""}>Attack</button>
-      </div>
-    `).join("");
-    
-    elements.simPlayerField.querySelectorAll(".sim-attack-character").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        doAttack(parseInt(btn.dataset.index, 10), "player");
-      });
-    });
-  }
-  
+
+  renderSimulationTable(game, labels);
+
   elements.simLog.innerHTML = (game.log || []).slice(-12).map((entry) => `<li>${escapeHtml(entry)}</li>`).join("");
+}
+
+function _shortName(name, max = 14) {
+  const str = String(name || "");
+  return str.length > max ? str.slice(0, max - 1) + "…" : str;
+}
+
+function _powerK(power) {
+  const value = Number(power || 0);
+  if (!Number.isFinite(value) || value === 0) return "—";
+  return `${Math.floor(value / 1000)}K`;
+}
+
+function _renderPile(label, count, extra = "") {
+  return `
+    <div class="sim-pile">
+      <span class="sim-pile-label">${escapeHtml(label)}</span>
+      <strong class="sim-pile-count">${count}</strong>
+      ${extra ? `<span class="sim-pile-extra">${escapeHtml(extra)}</span>` : ""}
+    </div>`;
+}
+
+function _renderCard(card, opts = {}) {
+  const attached = (card.attached_don || []).length;
+  const topLeft = opts.isLeader ? attached : (card.cost || "—");
+  const topRight = card.counter || "";
+  const power = _powerK(opts.currentPower);
+  const life = opts.isLeader ? `${card.life || 5}🩸` : "";
+  const rested = card.rested ? "is-rested" : "";
+  const name = _shortName(opts.name || card.card_name || card.card_code);
+  return `
+    <div class="sim-card ${rested}">
+      <span class="sim-card-tl">${escapeHtml(topLeft)}</span>
+      ${topRight ? `<span class="sim-card-tr">${escapeHtml(topRight)}</span>` : ""}
+      <span class="sim-card-name">${escapeHtml(name)}</span>
+      <span class="sim-card-bl">${power}</span>
+      ${life ? `<span class="sim-card-br">${escapeHtml(life)}</span>` : ""}
+    </div>`;
+}
+
+function _leaderPower(leader) {
+  const base = Number(leader.power || 0);
+  return base + 1000 * (leader.attached_don || []).length;
+}
+
+function _charPower(char) {
+  const base = Number(char.power || 0);
+  return base + 1000 * (char.attached_don || []).length;
+}
+
+function _renderCharacterArea(characters, playerKey) {
+  const slots = [];
+  for (let i = 0; i < 5; i++) {
+    const char = characters[i];
+    if (char) {
+      slots.push(_renderCard(char, { currentPower: _charPower(char), name: char.card_name || char.card_code }));
+    } else {
+      slots.push(`<div class="sim-card-slot"></div>`);
+    }
+  }
+  return `<div class="sim-character-area ${playerKey}-character-area">${slots.join("")}</div>`;
+}
+
+function renderSimulationTable(game, labels) {
+  if (!elements.simulationTable) return;
+  elements.simulationTable.className = "simulation-table";
+  const topKey = "cpu";
+  const bottomKey = "player";
+  const top = game.players[topKey];
+  const bottom = game.players[bottomKey];
+
+  elements.simulationTable.innerHTML = `
+    <div class="sim-board-side sim-board-top">
+      <div class="sim-piles">
+        ${_renderPile("Deck", top.deck.length)}
+        ${_renderPile("DON!!", top.don_deck)}
+        ${_renderPile("Life", top.life.length)}
+        ${_renderPile("Trash", top.trash.length)}
+      </div>
+      ${_renderCharacterArea(top.characters, "opponent")}
+      <div class="sim-leader-area">${_renderCard(top.leader, { isLeader: true, currentPower: _leaderPower(top.leader), name: top.leader.card_name || top.leader.card_code })}</div>
+    </div>
+    <div class="sim-center-divider"><span>${escapeHtml(labels[topKey])} vs ${escapeHtml(labels[bottomKey])}</span></div>
+    <div class="sim-board-side sim-board-bottom">
+      <div class="sim-leader-area">${_renderCard(bottom.leader, { isLeader: true, currentPower: _leaderPower(bottom.leader), name: bottom.leader.card_name || bottom.leader.card_code })}</div>
+      ${_renderCharacterArea(bottom.characters, "player")}
+      <div class="sim-piles">
+        ${_renderPile("Deck", bottom.deck.length)}
+        ${_renderPile("DON!!", bottom.don_deck)}
+        ${_renderPile("Life", bottom.life.length)}
+        ${_renderPile("Trash", bottom.trash.length)}
+      </div>
+      <div class="sim-hand">
+        ${bottom.hand.map((card) => _renderCard(card, { currentPower: _charPower(card), name: card.card_name || card.card_code })).join("")}
+      </div>
+    </div>
+  `;
+}
+
+async function doRefresh() {
+  if (!state.game || state.game.turn_player !== "player") return;
+  await doAction({ type: "refresh", player: "player" });
 }
 
 async function doDraw() {
@@ -666,6 +784,28 @@ async function doPlay() {
     return;
   }
   await doAction({ type: "play", player: "player", card_index: index });
+}
+
+async function doAttach() {
+  if (!state.game || state.game.turn_player !== "player") return;
+  const player = state.game.players.player;
+  if (player.don_active <= 0) {
+    alert("No active DON!! to attach.");
+    return;
+  }
+  const choices = [
+    { label: "Leader", target: "leader", index: null },
+    ...player.characters.map((c, i) => ({ label: `${c.card_name || "Unknown"} [${i}]`, target: "character", index: i })),
+  ];
+  const input = prompt(`Attach DON!! to:\n${choices.map((c, i) => `${i}: ${c.label}`).join("\n")}`);
+  if (input === null) return;
+  const index = parseInt(input, 10);
+  if (Number.isNaN(index) || index < 0 || index >= choices.length) {
+    alert("Invalid target.");
+    return;
+  }
+  const chosen = choices[index];
+  await doAction({ type: "attach", player: "player", target: chosen.target, target_index: chosen.index });
 }
 
 async function doAttack(attackerIndex, target = "player", targetIndex = null) {
@@ -705,6 +845,16 @@ function renderPlaytest() {
   elements.playerLeaderSelect.innerHTML = `<option value="">Choose leader...</option>${leaders.map(option).join("")}`;
   elements.cpuLeaderSelect.innerHTML = `<option value="">Choose leader...</option>${leaders.map(option).join("")}`;
   
+  // Show/hide setup vs running view based on whether a game is active
+  if (elements.playtestSetup && elements.playtestRunning) {
+    const hasGame = Boolean(state.game);
+    elements.playtestSetup.classList.toggle("is-hidden", hasGame);
+    elements.playtestRunning.classList.toggle("is-hidden", !hasGame);
+    if (elements.simActionsArticle) {
+      elements.simActionsArticle.classList.toggle("is-hidden", state.playtest.simMode === "cpu-vs-cpu");
+    }
+  }
+  
   elements.playerDeckSourceSelect.value = state.playtest.playerDeckSource;
   elements.cpuDeckSourceSelect.value = state.playtest.cpuDeckSource;
   elements.simModeSelect.value = state.playtest.simMode;
@@ -713,27 +863,73 @@ function renderPlaytest() {
   const playerOwnedSection = document.getElementById("player-owned-section");
   const cpuPresetSection = document.getElementById("cpu-preset-section");
   const cpuOwnedSection = document.getElementById("cpu-owned-section");
+  const playerPresetLeader = document.getElementById("player-preset-leader");
+  const cpuPresetLeader = document.getElementById("cpu-preset-leader");
+  const isCpuVsCpu = state.playtest.simMode === "cpu-vs-cpu";
   
+  elements.playerStarterDeckSelect.innerHTML = state.starterDecks.length
+    ? `<option value="" disabled selected>[Select deck]</option>` + state.starterDecks.map((deck) => `<option value="${escapeHtml(deck.id)}">${escapeHtml(deck.label)}</option>`).join("")
+    : `<option value="">No starter presets loaded</option>`;
+  elements.cpuStarterDeckSelect.innerHTML = state.starterDecks.length
+    ? `<option value="" disabled selected>[Select deck]</option>` + state.starterDecks.map((deck) => `<option value="${escapeHtml(deck.id)}">${escapeHtml(deck.label)}</option>`).join("")
+    : `<option value="">No starter presets loaded</option>`;
+
   if (state.playtest.playerDeckSource === "preset") {
     playerPresetSection.classList.remove("is-hidden");
     playerOwnedSection.classList.add("is-hidden");
-    elements.playerStarterDeckSelect.value = state.playtest.playerDeck?.preset_id || state.starterDecks[0]?.id || "";
+    const firstPreset = state.starterDecks[0];
+    const selectedId = state.playtest.playerDeck?.id || firstPreset?.id || "";
+    elements.playerStarterDeckSelect.value = selectedId;
+    if (selectedId) {
+      state.playtest.playerDeck = state.starterDecks.find((d) => d.id === selectedId) || state.playtest.playerDeck || firstPreset || null;
+    }
     elements.playerDeckSummary.textContent = state.playtest.playerDeck ? `${state.playtest.playerDeck.name} (50 cards)` : "No deck loaded.";
+    
+    if (state.playtest.playerDeck?.leader) {
+      const leader = state.playtest.playerDeck.leader;
+      playerPresetLeader.classList.remove("is-hidden");
+      playerPresetLeader.textContent = `Leader: ${leader.card_name || leader.card_code || "Unknown"} (${leader.card_code || ""})`;
+    } else {
+      playerPresetLeader.classList.add("is-hidden");
+    }
   } else {
     playerPresetSection.classList.add("is-hidden");
     playerOwnedSection.classList.remove("is-hidden");
+    playerPresetLeader.classList.add("is-hidden");
     elements.playerDeckSummary.textContent = "Select a leader to build a deck.";
   }
   
   if (state.playtest.cpuDeckSource === "preset") {
     cpuPresetSection.classList.remove("is-hidden");
     cpuOwnedSection.classList.add("is-hidden");
-    elements.cpuStarterDeckSelect.value = state.playtest.cpuDeck?.preset_id || state.starterDecks[0]?.id || "";
+    const firstPreset = state.starterDecks[0];
+    const selectedId = state.playtest.cpuDeck?.id || firstPreset?.id || "";
+    elements.cpuStarterDeckSelect.value = selectedId;
+    if (selectedId) {
+      state.playtest.cpuDeck = state.starterDecks.find((d) => d.id === selectedId) || state.playtest.cpuDeck || firstPreset || null;
+    }
     elements.cpuDeckSummary.textContent = state.playtest.cpuDeck ? `${state.playtest.cpuDeck.name} (50 cards)` : "No deck loaded.";
+    
+    if (state.playtest.cpuDeck?.leader) {
+      const leader = state.playtest.cpuDeck.leader;
+      cpuPresetLeader.classList.remove("is-hidden");
+      cpuPresetLeader.textContent = `Leader: ${leader.card_name || leader.card_code || "Unknown"} (${leader.card_code || ""})`;
+    } else {
+      cpuPresetLeader.classList.add("is-hidden");
+    }
   } else {
     cpuPresetSection.classList.add("is-hidden");
     cpuOwnedSection.classList.remove("is-hidden");
+    cpuPresetLeader.classList.add("is-hidden");
     elements.cpuDeckSummary.textContent = "Select a leader to build a deck.";
+  }
+  
+  // Dynamic deck panel headings.
+  if (elements.playerDeckHeading) {
+    elements.playerDeckHeading.textContent = isCpuVsCpu ? "CPU 1 Deck" : "Player Deck";
+  }
+  if (elements.cpuDeckHeading) {
+    elements.cpuDeckHeading.textContent = isCpuVsCpu ? "CPU 2 Deck" : "CPU Deck";
   }
   
   elements.simModeNote.textContent = state.playtest.simMode === "player-vs-cpu"
@@ -973,67 +1169,47 @@ async function startSimulation() {
     return;
   }
   
-  const playerDeck = state.playtest.playerDeck;
-  const cpuDeck = state.playtest.cpuDeck;
+  const mode = state.playtest.simMode;
+  const playerDeck = getPlayerDeckForSim();
+  const cpuDeck = getCpuDeckForSim();
   
   if (!playerDeck || !cpuDeck) {
-    alert("Please select decks for both Player and CPU before starting the simulation.");
+    alert("Please select decks for both sides before starting the simulation.");
     return;
   }
   
-  const playerCheck = localDeckCheck(playerDeck);
-  const cpuCheck = localDeckCheck(cpuDeck);
-  
-  if (!playerCheck.is_legal && !confirm("Player deck does not pass the basic local check yet. Start the sim anyway?")) return;
-  if (!cpuCheck.is_legal && !confirm("CPU deck does not pass the basic local check yet. Start the sim anyway?")) return;
-  
   try {
-    const payload = await apiFetch("/api/sim/new", {
+    const payload = await apiFetch("/api/game", {
       method: "POST",
-      body: JSON.stringify({ player_deck: playerDeck, cpu_deck: cpuDeck, seed: 123 }),
+      body: JSON.stringify({
+        mode,
+        player_deck: playerDeck,
+        cpu_deck: cpuDeck,
+        seed: Math.floor(Math.random() * 1_000_000_000),
+      }),
     });
-    state.game = payload.game;
-    state.activeSection = "playtest-section";
-    
-    if (state.playtest.simMode === "cpu-vs-cpu") {
-      await runCpuVsCpuAutoSim();
+    const gameId = payload.game_id;
+    if (gameId) {
+      window.location.href = `./board.html?game_id=${encodeURIComponent(gameId)}&mode=${encodeURIComponent(mode)}`;
+    } else {
+      alert("Backend did not return a game id.");
     }
-    
-    renderAll();
   } catch (error) {
     alert(`Could not start simulation: ${error.message}`);
   }
 }
 
-async function runCpuVsCpuAutoSim() {
-  if (!state.game || state.playtest.simMode !== "cpu-vs-cpu") return;
-  
-  const maxTurns = 20;
-  for (let i = 0; i < maxTurns; i++) {
-    if (!state.game || state.game.winner) break;
-    
-    try {
-      const payload = await apiFetch("/api/sim/action", {
-        method: "POST",
-        body: JSON.stringify({ game: state.game, action: { type: "pass" }, cpu_auto: true }),
-      });
-      state.game = payload.game;
-      renderAll();
-      await new Promise(resolve => setTimeout(resolve, 300));
-    } catch (error) {
-      console.error("CPU vs CPU sim error:", error);
-      break;
-    }
-  }
-  
-  if (state.game?.winner) {
-    const winnerName = state.game.winner === "player" ? "Player" : "CPU";
-    state.game.log = state.game.log || [];
-    state.game.log.push(`GAME OVER: ${winnerName} wins!`);
-    renderAll();
-  }
+function resetSimulationView() {
+  state.game = null;
+  if (elements.playtestSetup) elements.playtestSetup.classList.remove("is-hidden");
+  if (elements.playtestRunning) elements.playtestRunning.classList.add("is-hidden");
+  renderAll();
 }
 
+async function runCpuVsCpuAutoSim() {
+  // Deprecated: CPU vs CPU now runs inside board.html.
+  return;
+}
 async function runBatchSimulation() {
   if (!USE_API) {
     alert("Batch simulation needs the local backend. Click 'Use Laptop Backend' first while this PC backend is running.");
@@ -1086,8 +1262,9 @@ function renderMatchResults(result) {
 function getPlayerDeckForSim() {
   const source = state.playtest.playerDeckSource;
   if (source === "preset") {
-    const preset = state.starterDecks.find((d) => d.id === state.playtest.playerPresetId);
-    return preset ? { name: preset.name, leader: preset.leader, cards: preset.cards } : null;
+    const selectedId = state.playtest.playerDeck?.id || elements.playerStarterDeckSelect?.value || "";
+    const preset = state.starterDecks.find((d) => d.id === selectedId);
+    return preset ? { name: preset.name || preset.label || preset.id || "Starter Deck", leader: preset.leader, cards: preset.cards } : null;
   }
   // owned collection
   const leaderRow = state.rows.find((r) => r.card_code === state.deck.leaderId);
@@ -1104,8 +1281,9 @@ function getPlayerDeckForSim() {
 function getCpuDeckForSim() {
   const source = state.playtest.cpuDeckSource;
   if (source === "preset") {
-    const preset = state.starterDecks.find((d) => d.id === state.playtest.cpuPresetId);
-    return preset ? { name: preset.name, leader: preset.leader, cards: preset.cards } : null;
+    const selectedId = state.playtest.cpuDeck?.id || elements.cpuStarterDeckSelect?.value || "";
+    const preset = state.starterDecks.find((d) => d.id === selectedId);
+    return preset ? { name: preset.name || preset.label || preset.id || "Starter Deck", leader: preset.leader, cards: preset.cards } : null;
   }
   // owned collection
   const leaderRow = state.rows.find((r) => r.card_code === state.deck.leaderId);
@@ -1130,7 +1308,7 @@ function wireEvents() {
     });
   });
   on(elements.saveBackendUrlButton, "click", () => setBackendUrl(elements.backendUrlInput.value));
-  on(elements.useLocalBackendButton, "click", () => setBackendUrl("http://127.0.0.1:8000"));
+  on(elements.useLocalBackendButton, "click", () => setBackendUrl(`${location.protocol}//${location.hostname || "127.0.0.1"}:8001`));
   on(elements.leaderSelect, "change", () => {
     state.deck.leaderId = elements.leaderSelect.value;
     state.deck.presetId = "";
@@ -1170,10 +1348,13 @@ function wireEvents() {
   });
   on(elements.validateDeckButton, "click", validateDeck);
   on(elements.startSimButton, "click", startSimulation);
+  if (elements.resetSimButton) on(elements.resetSimButton, "click", resetSimulationView);
   on(elements.passTurnButton, "click", () => doAction({ type: "pass", player: state.game?.turn_player }));
+  on(elements.simRefreshButton, "click", doRefresh);
   on(elements.simDrawButton, "click", doDraw);
   on(elements.simDonButton, "click", doDon);
   on(elements.simPlayButton, "click", doPlay);
+  on(elements.simAttachButton, "click", doAttach);
   on(elements.simAttackButton, "click", () => {
     if (!state.game || state.game.turn_player !== "player") return;
     const player = state.game.players.player;
@@ -1194,7 +1375,7 @@ function wireEvents() {
       doAttack(index, "player");
     } else {
       const targetChoices = opponent.characters.map((char, i) => `${i}: ${char.card_name || "Unknown"} (power ${char.power || 0})`).join("\n");
-      const targetInput = prompt(`Choose target (index) or leave empty for direct attack if blocked:\n${targetChoices}`);
+      const targetInput = prompt(`Choose target (index) or leave empty for direct attack:\n${targetChoices}`);
       if (targetInput === null) return;
       if (targetInput === "") {
         doAttack(index, "player");
@@ -1236,6 +1417,13 @@ function wireEvents() {
   on(elements.simModeSelect, "change", () => {
     state.playtest.simMode = elements.simModeSelect.value;
     renderAll();
+  });
+  on(elements.toggleBackendPanel, "click", () => {
+    const collapsed = elements.backendPanel?.classList.toggle("is-collapsed");
+    if (elements.toggleBackendPanel) {
+      elements.toggleBackendPanel.textContent = collapsed ? "Expand" : "Collapse";
+      elements.toggleBackendPanel.setAttribute("aria-expanded", String(!collapsed));
+    }
   });
   on(elements.searchInput, "input", () => {
     state.search = elements.searchInput.value;

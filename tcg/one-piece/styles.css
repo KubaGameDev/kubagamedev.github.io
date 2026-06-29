@@ -1588,14 +1588,72 @@ select:focus-visible {
   margin-bottom: 12px;
 }
 
-.deck-list,
-.validation-output,
-.sim-log,
-.zone-grid {
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.55);
-  padding: 12px;
+.deck-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 14px;
+  max-height: 540px;
+  overflow-y: auto;
+  align-content: flex-start;
+}
+
+.deck-list.empty-state {
+  display: block;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.deck-card-tile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.deck-card-qty {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+}
+
+.deck-card-img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 6px 14px rgba(40, 30, 14, 0.18);
+  background: rgba(35, 75, 96, 0.1);
+}
+
+.deck-card-name {
+  font-size: 0.72rem;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
 }
 
 .deck-list-row {
@@ -1616,6 +1674,23 @@ select:focus-visible {
   height: 32px;
   font-size: 1.05rem;
   flex: 0 0 auto;
+}
+
+.deck-visual-card {
+  min-height: 320px;
+}
+
+.deck-summary-card {
+  min-height: 320px;
+}
+
+.validation-output,
+.sim-log,
+.zone-grid {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 12px;
 }
 
 .zone-grid {
@@ -1777,4 +1852,278 @@ select:focus-visible {
   .zone-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* === Collapsible Backend Panel === */
+.backend-panel.is-collapsed .backend-controls {
+  display: none;
+}
+
+.backend-panel.is-collapsed .backend-collapsed-status {
+  display: block;
+}
+
+.backend-panel:not(.is-collapsed) .backend-collapsed-status {
+  display: none;
+}
+
+.backend-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.backend-panel-header h2,
+.backend-panel-header h3 {
+  margin: 0;
+}
+
+.backend-panel-toggle {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+  color: var(--ink);
+}
+
+/* === Simulation Table === */
+.simulation-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--panel-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+}
+
+.sim-player-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-piles-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sim-pile {
+  position: relative;
+  min-width: 48px;
+  min-height: 58px;
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  box-shadow: 0 2px 6px rgba(40, 30, 14, 0.06);
+}
+
+.sim-pile-count {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--sea);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.sim-pile-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: center;
+}
+
+.sim-character-area,
+.sim-hand {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 66px;
+}
+
+.sim-leader-area {
+  display: flex;
+  justify-content: center;
+}
+
+.sim-card {
+  position: relative;
+  width: 58px;
+  min-height: 72px;
+  background: var(--panel-strong);
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 3px 18px;
+  text-align: center;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 6px rgba(40, 30, 14, 0.06);
+  transition: transform 0.15s ease;
+}
+
+.sim-card.is-rested {
+  transform: rotate(4deg);
+  border-color: var(--warning);
+  opacity: 0.85;
+}
+
+.sim-card.is-active {
+  border-color: var(--success);
+}
+
+.sim-card-name {
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
+.sim-card-corner {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--sea);
+  min-width: 18px;
+  height: 15px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+
+.sim-card-corner.top-left {
+  top: 3px;
+  left: 3px;
+}
+
+.sim-card-corner.top-right {
+  top: 3px;
+  right: 3px;
+  background: var(--brand);
+}
+
+.sim-card-corner.bottom-left {
+  bottom: 3px;
+  left: 3px;
+  background: var(--danger);
+}
+
+.sim-card-corner.bottom-right {
+  bottom: 3px;
+  right: 3px;
+  background: var(--success);
+}
+
+.sim-card.leader {
+  width: 78px;
+  min-height: 96px;
+  font-size: 11px;
+}
+
+.sim-card.leader .sim-card-name {
+  font-size: 12px;
+}
+
+.sim-life-stack {
+  position: relative;
+  min-width: 48px;
+  min-height: 58px;
+}
+
+.sim-life-card {
+  position: absolute;
+  inset: 0;
+  background: var(--brand-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sim-center-divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--rope), transparent);
+  margin: 4px 0;
+  border-radius: 999px;
+}
+
+.sim-empty-slot {
+  width: 58px;
+  height: 72px;
+  border: 2px dashed var(--line);
+  border-radius: 8px;
+  background: transparent;
+}
+
+.backend-panel {
+  padding: 14px 18px;
+}
+
+.backend-panel.is-collapsed {
+  padding: 10px 18px;
+}
+
+.backend-panel .backend-copy {
+  display: none;
+}
+
+.backend-panel-header .eyebrow {
+  font-size: 11px;
+}
+
+.backend-panel-header h2 {
+  font-size: 16px;
+}
+
+.backend-controls {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.backend-status,
+.backend-collapsed-status {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.playtest-start-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 18px 0;
+}
+
+.playtest-start-actions button {
+  min-width: 140px;
 }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OPTCG Playtest Board</title>
-  <link rel="stylesheet" href="board.css?v=ability-system-23" />
+  <link rel="stylesheet" href="board.css?v=pt007-field" />
 </head>
 <body>
   <div id="loading" class="loading-overlay">Loading board...</div>
@@ -24,8 +24,8 @@
       </div>
       <div id="game-message" class="game-message">Drag a card to play, attach, or attack.</div>
     </div>
-    <div class="turn-info">
-      Turn <span id="turn-number">1</span> — <span id="turn-player">Player</span> — <span id="phase">Mulligan</span>
+    <div class="turn-info" aria-label="Current game timing">
+      <span id="turn-number">Global Turn 1</span> — <span id="turn-player">Active Player: Player</span> — Phase: <span id="phase">Mulligan</span>
     </div>
   </header>
 
@@ -50,20 +50,22 @@
           <span class="zone-count" id="opponent-trash-count">0</span>
         </div>
       </div>
-      <div class="character-row" id="opponent-characters">
-        <div class="char-slot" data-slot="opponent-char-0"></div>
-        <div class="char-slot" data-slot="opponent-char-1"></div>
-        <div class="char-slot" data-slot="opponent-char-2"></div>
-        <div class="char-slot" data-slot="opponent-char-3"></div>
-        <div class="char-slot" data-slot="opponent-char-4"></div>
+      <div class="field-row" id="opponent-field">
+        <div class="leader-zone" id="opponent-leader" data-zone="opponent-leader" data-zone-label="Leader"></div>
+        <div class="character-row" id="opponent-characters" data-zone-label="Characters">
+          <div class="char-slot" data-slot="opponent-char-0"></div>
+          <div class="char-slot" data-slot="opponent-char-1"></div>
+          <div class="char-slot" data-slot="opponent-char-2"></div>
+          <div class="char-slot" data-slot="opponent-char-3"></div>
+          <div class="char-slot" data-slot="opponent-char-4"></div>
+        </div>
+        <div class="stage-zone" id="opponent-stage" data-zone="opponent-stage" data-zone-label="Stage"></div>
       </div>
-      <div class="stage-zone" id="opponent-stage" data-zone="opponent-stage"></div>
-      <div class="leader-zone" id="opponent-leader" data-zone="opponent-leader"></div>
-      <div class="hand-zone" id="opponent-hand">
+      <div class="hand-zone" id="opponent-hand" data-zone-label="Hand">
         <span class="zone-label">Hand</span>
         <span class="zone-count" id="opponent-hand-count">0</span>
       </div>
-      <div class="don-area" id="opponent-don-area"></div>
+      <div class="don-area" id="opponent-don-area" data-zone-label="DON!! Area"></div>
     </section>
 
     <!-- Center controls -->
@@ -83,16 +85,18 @@
 
     <!-- Player side -->
     <section class="side player-side" id="player-side">
-      <div class="hand-zone" id="player-hand"></div>
-      <div class="don-area" id="player-don-area"></div>
-      <div class="leader-zone" id="player-leader" data-zone="player-leader"></div>
-      <div class="stage-zone" id="player-stage" data-zone="player-stage"></div>
-      <div class="character-row" id="player-characters">
-        <div class="char-slot" data-slot="player-char-0"></div>
-        <div class="char-slot" data-slot="player-char-1"></div>
-        <div class="char-slot" data-slot="player-char-2"></div>
-        <div class="char-slot" data-slot="player-char-3"></div>
-        <div class="char-slot" data-slot="player-char-4"></div>
+      <div class="hand-zone" id="player-hand" data-zone-label="Hand"></div>
+      <div class="don-area" id="player-don-area" data-zone-label="DON!! Area"></div>
+      <div class="field-row" id="player-field">
+        <div class="leader-zone" id="player-leader" data-zone="player-leader" data-zone-label="Leader"></div>
+        <div class="character-row" id="player-characters" data-zone-label="Characters">
+          <div class="char-slot" data-slot="player-char-0"></div>
+          <div class="char-slot" data-slot="player-char-1"></div>
+          <div class="char-slot" data-slot="player-char-2"></div>
+          <div class="char-slot" data-slot="player-char-3"></div>
+          <div class="char-slot" data-slot="player-char-4"></div>
+        </div>
+        <div class="stage-zone" id="player-stage" data-zone="player-stage" data-zone-label="Stage"></div>
       </div>
       <div class="piles">
         <div class="zone deck-zone" data-zone="player-deck">

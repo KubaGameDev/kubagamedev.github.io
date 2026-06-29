@@ -122,7 +122,7 @@ body {
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "hand piles piles don don"
-    "leader stage characters characters characters";
+    "field field field field field";
   align-content: start;
 }
 
@@ -130,25 +130,21 @@ body {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   grid-template-rows: minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "leader stage characters characters characters"
+    "field field field field field"
     "piles don don don don"
     "hand hand hand hand hand";
   align-content: end;
 }
 
 .opponent-side .piles { grid-area: piles; }
-.opponent-side .character-row { grid-area: characters; }
-.opponent-side .leader-zone { grid-area: leader; }
+.opponent-side .field-row { grid-area: field; }
 .opponent-side .hand-zone { grid-area: hand; }
-.opponent-side .stage-zone { grid-area: stage; }
 
 .player-side .hand-zone { grid-area: hand; }
 .player-side .don-area { grid-area: don; }
 .opponent-side .don-area { grid-area: don; }
-.player-side .leader-zone { grid-area: leader; }
-.player-side .character-row { grid-area: characters; }
+.player-side .field-row { grid-area: field; }
 .player-side .piles { grid-area: piles; }
-.player-side .stage-zone { grid-area: stage; }
 
 .piles {
   display: flex;
@@ -300,6 +296,116 @@ body {
 .stage-zone .card {
   width: var(--leader-w);
   height: var(--leader-h);
+}
+
+/* Field row: leader + characters + stage in one horizontal line */
+.field-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.12rem, 0.35vw, 0.24rem);
+  min-height: 0;
+  overflow: visible;
+}
+
+/* Zone labels on field areas */
+.leader-zone,
+.stage-zone,
+.character-row,
+.hand-zone,
+.don-area {
+  position: relative;
+}
+
+.leader-zone::before,
+.stage-zone::before,
+.character-row::before,
+.hand-zone::before,
+.don-area::before {
+  content: attr(data-zone-label);
+  position: absolute;
+  top: -14px;
+  left: 2px;
+  font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+  color: var(--muted);
+  opacity: 0.65;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hand-zone::before {
+  top: -12px;
+}
+.don-area::before {
+  top: -12px;
+}
+
+/* Rested / active visual distinction on cards */
+.card.active-character {
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.55), 0 0 10px rgba(74, 222, 128, 0.25);
+  border-radius: 6px;
+}
+
+/* NEW indicator for cards played this turn */
+.new-turn-indicator {
+  position: absolute;
+  top: -8px;
+  right: -4px;
+  background: var(--accent);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 6;
+  animation: newPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes newPulse {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+/* Persistent attack arrow overlay */
+#attack-arrow-svg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 160;
+  opacity: 0;
+  animation: arrowFadeIn 0.25s ease forwards;
+}
+
+@keyframes arrowFadeIn {
+  from { opacity: 0; }
+  to { opacity: 0.7; }
+}
+
+#attack-arrow-svg.fading-out {
+  animation: arrowFadeOut 0.35s ease forwards;
+}
+
+@keyframes arrowFadeOut {
+  from { opacity: 0.7; }
+  to { opacity: 0; }
+}
+
+#attack-arrow-svg line.attack-arrow-line {
+  stroke: var(--danger);
+  stroke-width: 2;
+  marker-end: url(#arrowhead);
+  stroke-dasharray: 6,4;
+}
+
+#attack-arrow-svg.resolved line.attack-arrow-line {
+  stroke: var(--success);
+  stroke-dasharray: 8,4;
+  marker-end: url(#arrowhead-resolved);
 }
 
 .hand-zone {
@@ -483,6 +589,8 @@ body {
 
 .card.rested {
   transform: rotate(90deg);
+  opacity: 0.7;
+  filter: grayscale(0.35) brightness(0.9);
 }
 
 .card.in-hand {
@@ -530,6 +638,22 @@ body {
   border-radius: 4px;
   pointer-events: none;
   z-index: 5;
+}
+
+/* DON!! count badge on cards with attached DON */
+.don-badge {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  background: rgba(255, 215, 0, 0.9);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 6;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
 }
 
 /* Attached DON pips under cards */
@@ -1191,4 +1315,35 @@ body.ability-choosing-amount .board {
     width: 140px;
     justify-self: center;
   }
+}
+
+/* ============================================
+   COUNTER TARGET SELECTION MODAL
+   ============================================ */
+.counter-target-panel {
+  grid-template-columns: 1fr;
+  max-width: min(92vw, 720px);
+}
+
+.counter-target-header {
+  text-align: center;
+  margin-bottom: 0.25rem;
+  color: var(--accent);
+}
+
+.counter-target-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-w), 1fr));
+  gap: 0.5rem;
+  justify-items: center;
+}
+
+.counter-target-item .card-wrapper {
+  width: var(--card-w);
+  height: var(--card-h);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.counter-target-item .card-wrapper:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.55);
 }

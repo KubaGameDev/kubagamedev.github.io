@@ -1,0 +1,70 @@
+{
+  "websiteStats": {
+    "allTimeViews": 0,
+    "allTimeClicks": 0,
+    "description": "Website-wide statistics. Updated via localStorage in client browsers."
+  },
+  "snakeHighScores": [
+    {
+      "nickname": "Player1",
+      "score": 50,
+      "time": 120,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player2",
+      "score": 45,
+      "time": 110,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player3",
+      "score": 40,
+      "time": 100,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player4",
+      "score": 35,
+      "time": 90,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player5",
+      "score": 30,
+      "time": 80,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player6",
+      "score": 25,
+      "time": 70,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player7",
+      "score": 20,
+      "time": 60,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player8",
+      "score": 15,
+      "time": 50,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player9",
+      "score": 10,
+      "time": 40,
+      "date": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "nickname": "Player10",
+      "score": 5,
+      "time": 30,
+      "date": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "_readme": "This file serves as a template for the data structure. Since this is a static GitHub Pages site, actual data is stored in browser localStorage. To view or update global high scores, you would need to implement a backend service or GitHub Actions workflow."
+}

@@ -1,132 +1,95 @@
-function toggleTheme(){
-  const root=document.documentElement;
-  const current=root.style.getPropertyValue('--bg-color')||getComputedStyle(root).getPropertyValue('--bg-color');
-  if(current.trim()==='#000'){
-    root.style.setProperty('--bg-color','#fff');
-    root.style.setProperty('--text-color','#000');
-    root.style.setProperty('--logo-filter','invert(0)');
-    localStorage.setItem('theme','light');
-  }else{
-    root.style.setProperty('--bg-color','#000');
-    root.style.setProperty('--text-color','#fff');
-    root.style.setProperty('--logo-filter','invert(1)');
-    localStorage.setItem('theme','dark');
-  }
-}
-
-function loadTheme(){
-  const saved=localStorage.getItem('theme');
-  if(saved==='light'){
-    document.documentElement.style.setProperty('--bg-color','#fff');
-    document.documentElement.style.setProperty('--text-color','#000');
-    document.documentElement.style.setProperty('--logo-filter','invert(0)');
-  }else{
-    // Default to dark theme (saved==='dark' or no saved preference)
-    document.documentElement.style.setProperty('--bg-color','#000');
-    document.documentElement.style.setProperty('--text-color','#fff');
-    document.documentElement.style.setProperty('--logo-filter','invert(1)');
-  }
-}
-
-const PLAUSIBLE_SITE='jumpkat.com';
-// Replace with your Plausible API key if you wish to show global stats
-const PLAUSIBLE_API_KEY='YOUR_API_KEY_HERE';
-
-async function loadStats(page){
-  const el=document.getElementById('stats');
-  if(!el)return;
-  try{
-    const url=`https://plausible.io/api/v1/stats/aggregate?site_id=${PLAUSIBLE_SITE}&period=all&metrics=pageviews&filters=event%3Apage%3D%3D/${page}`;
-    const res=await fetch(url,{headers:{'Authorization':'Bearer '+PLAUSIBLE_API_KEY}});
-    if(!res.ok)throw new Error('bad response');
-    const data=await res.json();
-    const count=data.results.pageviews.value||0;
-    el.textContent='Views: '+count;
-  }catch(err){
-    const key='stats_'+page;
-    const count=Number(localStorage.getItem(key)||'0')+1;
-    localStorage.setItem(key,count);
-    el.textContent='Views: '+count+' (local)';
-  }
-}
-
-async function loadClicks(eventName){
-  const el=document.getElementById('stats');
-  if(!el)return;
-  try{
-    const url=`https://plausible.io/api/v1/stats/aggregate?site_id=${PLAUSIBLE_SITE}&period=all&metrics=events&filters=event:name==${eventName}`;
-    const res=await fetch(url,{headers:{'Authorization':'Bearer '+PLAUSIBLE_API_KEY}});
-    if(!res.ok)throw new Error('bad response');
-    const data=await res.json();
-    const count=data.results.events.value||0;
-    el.textContent+='\nClicks: '+count;
-  }catch(err){
-    // do nothing if stats can't be loaded
-  }
-}
-
-function toggleStats(){
-  const s=document.getElementById('stats');
-  if(!s)return;
-  s.style.display=s.style.display==='none'? 'inline' : 'none';
-}
-
-function particles(){
-  const canvas=document.getElementById('particles');
-  if(!canvas)return;
-  const ctx=canvas.getContext('2d');
-  let width,height,particles=[];
-  function resize(){
-    width=canvas.width=window.innerWidth;
-    height=canvas.height=window.innerHeight;
-  }
-  window.addEventListener('resize',resize);
-  resize();
-  function addParticle(){
-    particles.push({x:Math.random()*width,y:-10,s:2+Math.random()*3,v:0.5+Math.random(),life:100+Math.random()*100});
-  }
-  function update(){
-    ctx.clearRect(0,0,width,height);
-    if(particles.length<100)addParticle();
-    particles.forEach(p=>{
-      p.y+=p.v;
-      p.life--;
-      ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-color');
-      ctx.globalAlpha=Math.max(p.life/200,0);
-      ctx.fillRect(p.x,p.y,p.s,p.s);
-    });
-    particles=particles.filter(p=>p.life>0);
-    requestAnimationFrame(update);
-  }
-  update();
-}
-
-document.addEventListener('DOMContentLoaded',()=>{
-  loadTheme();
-  particles();
-  const page=location.pathname.replace(/^\//,'');
-  loadStats(page||'index');
-  loadClicks('stats-click');
-  attachEventTracking();
-  albumReveal();
-});
-
-function albumReveal(){
-  const album=document.getElementById('album');
-  const marker=document.querySelector('footer p');
-  if(!album||!marker)return;
-  function check(){
-    const rect=marker.getBoundingClientRect();
-    if(rect.top<=window.innerHeight)album.style.display='block';
-  }
-  document.addEventListener('scroll',check);
-  check();
-}
-
-function attachEventTracking(){
-  document.querySelectorAll('[data-event]').forEach(el=>{
-    el.addEventListener('click',()=>{
-      if(window.plausible)window.plausible(el.dataset.event);
-    });
+"use strict";
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  document.querySelectorAll('.theme-toggle').forEach(button => {
+    const light = theme === 'light';
+    button.textContent = light ? 'Dark mode' : 'Light mode';
+    button.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
+    button.setAttribute('aria-pressed', String(light));
   });
 }
+function toggleTheme() {
+  const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  applyTheme(theme);
+  try { localStorage.setItem('theme', theme); } catch { /* The theme still works without storage. */ }
+}
+function loadTheme() {
+  let saved;
+  try { saved = localStorage.getItem('theme'); } catch { /* Use the default dark theme. */ }
+  applyTheme(saved === 'light' ? 'light' : 'dark');
+}
+function particles() {
+  const canvas = document.getElementById('particles');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let width, height, dots = [], frame = null, previous = 0;
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+  function update(now) {
+    frame = null;
+    if (motion.matches || document.hidden) return;
+    const step = previous ? Math.min((now - previous) / 16.67, 3) : 1;
+    previous = now;
+    ctx.clearRect(0, 0, width, height);
+    if (dots.length < 45) dots.push({ x: Math.random() * width, y: -10, s: 2 + Math.random() * 3, v: .5 + Math.random(), life: 200 });
+    // Read the theme once per frame rather than once per particle.
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-color');
+    dots.forEach(dot => {
+      dot.y += dot.v * step;
+      dot.life -= step;
+      ctx.globalAlpha = Math.max(dot.life / 1200, 0);
+      ctx.fillRect(dot.x, dot.y, dot.s, dot.s);
+    });
+    dots = dots.filter(dot => dot.life > 0 && dot.y < height);
+    frame = requestAnimationFrame(update);
+  }
+  function sync() {
+    if (frame !== null) cancelAnimationFrame(frame);
+    frame = null;
+    previous = 0;
+    if (!motion.matches && !document.hidden) frame = requestAnimationFrame(update);
+    else ctx.clearRect(0, 0, width, height);
+  }
+  window.addEventListener('resize', resize);
+  motion.addEventListener('change', sync);
+  document.addEventListener('visibilitychange', sync);
+  resize();
+  sync();
+}
+function startAnalytics() {
+  // Private statistics API credentials must never be placed in browser JavaScript.
+  // Keep the existing public tracker on the real site only, so previews do not count.
+  if (!['jumpkat.com', 'www.jumpkat.com'].includes(location.hostname)) return;
+  window.plausible = window.plausible || function () { (window.plausible.q = window.plausible.q || []).push(arguments); };
+  const tracker = document.createElement('script');
+  tracker.defer = true;
+  tracker.dataset.domain = 'jumpkat.com';
+  tracker.src = 'https://plausible.io/js/plausible.js';
+  document.head.append(tracker);
+  document.querySelectorAll('[data-event]').forEach(element => {
+    element.addEventListener('click', () => window.plausible(element.dataset.event));
+  });
+}
+function albumReveal() {
+  const album = document.getElementById('album');
+  const marker = document.querySelector('footer > p');
+  if (!album || !marker) return;
+  if (!('IntersectionObserver' in window)) { album.style.display = 'block'; return; }
+  const observer = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting)) {
+      album.style.display = 'block';
+      observer.disconnect();
+    }
+  });
+  observer.observe(marker);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  loadTheme();
+  particles();
+  startAnalytics();
+  albumReveal();
+});

@@ -2,46 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="images/jumping-cat.svg">
   <title>Blog - Jumpkat</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="script.js" defer></script>
-  <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
 </head>
 <body>
-  <canvas id="particles"></canvas>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <canvas id="particles" aria-hidden="true"></canvas>
   <header>
     <a href="index.html"><img src="images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="index.html">Home</a>
-      <a href="blog.html">Blog</a>
+      <a href="blog.html" aria-current="page">Blog</a>
       <a href="contact.html">Contact</a>
       <a href="games/">Games</a>
     </nav>
     <div class="header-right">
-      <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
-      <button id="stats-btn" class="theme-toggle" onclick="toggleStats()" data-event="stats-click">STATS</button>
-      <span id="stats" style="display:none"></span>
+      <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch colour theme" aria-pressed="false">Light mode</button>
     </div>
   </header>
-  <main>
+  <main id="main-content">
     <h1>Blog</h1>
-    <div id="post-list"></div>
+    <div id="post-list" class="feature-card"><h2><a href="blog/welcome.html">Welcome to the blog</a></h2><p>Games, music and ideas from Jumpkat.</p></div>
   </main>
   <footer>
-    <img src="images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat">
+    <img src="images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat" loading="lazy" width="150" height="150">
     <p>Jumpkat established 2023. All rights reserved.</p>
     <div id="album" style="display:none">
       <p>Check out Kuba's album while you're here :)</p>
-      <iframe style="border-radius:12px" src="https://open.spotify.com/embed/album/49JnWym3X5izUPFvnquMEY?utm_source=generator" width="100%" height="352" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+      <iframe style="border-radius:12px" src="https://open.spotify.com/embed/album/49JnWym3X5izUPFvnquMEY?utm_source=generator" width="100%" height="352" title="Kuba’s album on Spotify" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
     </div>
   </footer>
-  <script>
-  const posts=[
-    {title:'Welcome to the Blog',url:'blog/welcome.html',date:'2023-01-01'}
-  ];
-  posts.sort((a,b)=>new Date(b.date)-new Date(a.date));
-  document.getElementById('post-list').innerHTML=posts.map(p=>'<p><a href="'+p.url+'">'+p.title+'</a></p>').join('');
-  </script>
 </body>
 </html>

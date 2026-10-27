@@ -2,35 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="images/jumping-cat.svg">
   <title>Games - Jumpkat</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="script.js" defer></script>
-  <script async defer data-domain="jumpkat.com" src="https://plausible.io/js/plausible.js"></script>
 </head>
 <body>
-  <canvas id="particles"></canvas>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <canvas id="particles" aria-hidden="true"></canvas>
   <header>
     <a href="index.html"><img src="images/jumping-cat.svg" alt="Jumpkat" height="40" class="logo"></a>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="index.html">Home</a>
       <a href="blog.html">Blog</a>
       <a href="contact.html">Contact</a>
       <a href="games/">Games</a>
     </nav>
     <div class="header-right">
-      <button class="theme-toggle" onclick="toggleTheme()">Flip</button>
-      <button id="stats-btn" class="theme-toggle" onclick="toggleStats()" data-event="stats-click">STATS</button>
-      <span id="stats" style="display:none"></span>
+      <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch colour theme" aria-pressed="false">Light mode</button>
     </div>
   </header>
-  <main>
+  <main id="main-content">
     <h1>Games</h1>
-    <p>Currently developing <strong>Negative Space</strong> for iPhone, WebGL and Android.</p>
-    <p><a href="play.html" class="game-button">Play Games</a></p>
+    <p>Explore the Jumpkat arcade: small games to play in your browser.</p>
+    <p><a href="games/" class="game-button">Visit the arcade</a></p>
   </main>
   <footer>
-    <img src="images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat">
+    <img src="images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat" loading="lazy" width="150" height="150">
     <p>Jumpkat established 2023. All rights reserved.</p>
   </footer>
 </body>

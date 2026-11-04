@@ -7,6 +7,7 @@
   <title>Select Game - Jumpkat</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="arcade.css">
   <script src="../script.js" defer></script>
 </head>
 <body>
@@ -18,7 +19,7 @@
       <a href="../index.html">Home</a>
       <a href="../blog.html">Blog</a>
       <a href="../contact.html">Contact</a>
-      <a href="../games/">Games</a>
+      <a href="../games/" aria-current="page">Games</a>
     </nav>
     <div class="header-right">
       <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch colour theme" aria-pressed="false">Light mode</button>
@@ -26,10 +27,25 @@
   </header>
   <main id="main-content">
     <h1>Select a Game</h1>
-    <div class="game-button"><a href="pong.html">Pong<br><img src="../images/album-cover.jpg" alt="Pong"></a></div>
-    <div class="game-button"><a href="snake.html">Snake<br><img src="../images/album-cover.jpg" alt="Snake"></a></div>
-    <div class="game-button"><a href="tower.html">Tower Builder<br><img src="../images/album-cover.jpg" alt="Tower"></a></div>
-    <div class="game-button"><a href="juggle.html">Juggle Cats<br><img src="../images/album-cover.jpg" alt="Juggle"></a></div>
+    <p class="arcade-intro">Four little games, ready to play. Use a keyboard, mouse or touch screen.</p>
+    <div class="arcade-grid">
+      <a class="arcade-card" href="pong.html">
+        <img src="../images/games/pong.png" alt="Pong gameplay with two paddles and a ball crossing the court" width="644" height="405" fetchpriority="high">
+        <div class="arcade-card-copy"><h2>Pong</h2><p>Beat the computer or challenge a friend. First to 10 wins.</p><span class="play-link">Play Pong <span aria-hidden="true">→</span></span></div>
+      </a>
+      <a class="arcade-card" href="snake.html">
+        <img src="../images/games/snake.png" alt="Snake gameplay with a growing snake chasing food on the grid" width="404" height="405" loading="lazy">
+        <div class="arcade-card-copy"><h2>Snake</h2><p>Find the food, grow your snake and keep clear of your tail.</p><span class="play-link">Play Snake <span aria-hidden="true">→</span></span></div>
+      </a>
+      <a class="arcade-card" href="tower.html">
+        <img src="../images/games/tower.png" alt="Tower Builder gameplay with blocks stacked beneath a moving crane" width="404" height="405" loading="lazy">
+        <div class="arcade-card-copy"><h2>Tower Builder</h2><p>Time each drop and stack 10 blocks to reach the top.</p><span class="play-link">Play Tower Builder <span aria-hidden="true">→</span></span></div>
+      </a>
+      <a class="arcade-card" href="juggle.html">
+        <img src="../images/games/juggle.png" alt="Juggle Cats gameplay with three cats bouncing through the air" width="404" height="305" loading="lazy">
+        <div class="arcade-card-copy"><h2>Juggle Cats</h2><p>Tap the cats to keep them airborne and build your score.</p><span class="play-link">Play Juggle Cats <span aria-hidden="true">→</span></span></div>
+      </a>
+    </div>
   </main>
   <footer>
     <img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat" loading="lazy" width="150" height="150">

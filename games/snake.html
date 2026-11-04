@@ -7,8 +7,8 @@
   <title>Snake</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="arcade.css">
 <script src="../script.js" defer></script>
-<style>canvas{background:var(--bg-color);}</style>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -25,58 +25,186 @@
 <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Switch colour theme" aria-pressed="false">Light mode</button>
 </div>
 </header>
-<main id="main-content">
+<main id="main-content" class="arcade-game">
+<a class="back-link" href="./">← All games</a>
 <h1>Snake</h1>
-<button id="start-btn">Start</button>
-<canvas id="game" width="400" height="400" style="display:none"></canvas>
-<p>Time: <span id="time">0</span> | Score: <span id="score">1</span></p>
-<p><strong>OBJECTIVE:</strong> Eat food to grow as long as possible.<br><strong>INPUT:</strong> Arrow keys.</p>
+<p class="muted">Eat the fruit. Make room for one more turn.</p>
+<div class="game-toolbar">
+  <button id="start-btn" type="button">Start game</button>
+  <button id="pause-btn" class="button" type="button" disabled>Pause</button>
+</div>
+<p id="status" class="game-status" role="status" aria-live="polite">Ready to grow? Start a game.</p>
+<canvas id="game" width="400" height="400" tabindex="0" aria-label="Snake board. Steer with the arrow keys, W A S D, swipe, or the direction buttons below."></canvas>
+<p>Score: <span id="score">0</span> · Time: <span id="time">0</span>s</p>
+<div class="game-controls direction-pad" aria-label="Snake direction controls">
+  <button class="button" type="button" data-direction="up" aria-label="Move up">↑</button>
+  <button class="button" type="button" data-direction="left" aria-label="Move left">←</button>
+  <button class="button" type="button" data-direction="down" aria-label="Move down">↓</button>
+  <button class="button" type="button" data-direction="right" aria-label="Move right">→</button>
+</div>
+<p><strong>Objective:</strong> Eat fruit to grow, without hitting the walls or yourself. <strong>Controls:</strong> ↑/↓/←/→ or W/A/S/D. On a phone, swipe the board or use the direction buttons. Press P to pause.</p>
 </main>
 <footer><img src="../images/935CF301-8553-44E6-98FD-A0E992BEBD36.png" alt="Jumping Cat" class="footer-cat" loading="lazy" width="150" height="150"></footer>
 <script>
-const c=document.getElementById('game');
-const x=c.getContext('2d');
-const startBtn=document.getElementById('start-btn');
-let snake,dir,nextDir,food,running=false,time=0,loop,timer;
-function init(){
- snake=[[10,10]];dir=[1,0];nextDir=[1,0];food=[15,15];time=0;
- document.getElementById('score').textContent=snake.length;
- document.getElementById('time').textContent=time;
+'use strict';
+const c = document.getElementById('game');
+const x = c.getContext('2d');
+const startBtn = document.getElementById('start-btn');
+const pauseBtn = document.getElementById('pause-btn');
+const statusText = document.getElementById('status');
+const scoreText = document.getElementById('score');
+const timeText = document.getElementById('time');
+const gridSize = 20, cell = 20, stepSeconds = .16;
+const directions = {up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0]};
+const keyDirections = {ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right'};
+let snake, dir, nextDir, food, turnQueued = false, running = false, paused = false;
+let elapsed = 0, accumulator = 0, previous = null, frame = null, swipe = null, result = '';
+
+function init() {
+  snake = [[7, 10], [6, 10], [5, 10]];
+  dir = [1, 0]; nextDir = [1, 0]; food = [13, 10];
+  turnQueued = false; elapsed = 0; accumulator = 0; swipe = null; result = '';
+  scoreText.textContent = '0'; timeText.textContent = '0';
 }
-function draw(){
- x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
- x.fillRect(0,0,400,400);
- x.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-color');
- snake.forEach(([sx,sy])=>x.fillRect(sx*20,sy*20,18,18));
- x.fillRect(food[0]*20,food[1]*20,18,18);
+function placeFood() {
+  const occupied = new Set(snake.map(([sx, sy]) => sy * gridSize + sx));
+  const free = [];
+  for (let n = 0; n < gridSize * gridSize; n++) if (!occupied.has(n)) free.push(n);
+  if (free.length === 0) { food = null; return false; }
+  const square = free[Math.floor(Math.random() * free.length)];
+  food = [square % gridSize, Math.floor(square / gridSize)];
+  return true;
 }
-function step(){
- if(!running)return;
- dir=nextDir;
- const head=[snake[0][0]+dir[0],snake[0][1]+dir[1]];
- if(head[0]<0||head[0]>=20||head[1]<0||head[1]>=20||snake.some(s=>s[0]==head[0]&&s[1]==head[1])){
-  endGame();
-  return;
- }
- snake.unshift(head);
- if(head[0]==food[0]&&head[1]==food[1]){
-  food=[Math.floor(Math.random()*20),Math.floor(Math.random()*20)];
- }else{snake.pop();}
- document.getElementById('score').textContent=snake.length;
- draw();
+function draw() {
+  const theme = getComputedStyle(document.documentElement);
+  const foreground = theme.getPropertyValue('--text-color');
+  const accent = theme.getPropertyValue('--accent-color');
+  x.fillStyle = theme.getPropertyValue('--bg-color');
+  x.fillRect(0, 0, c.width, c.height);
+  x.strokeStyle = theme.getPropertyValue('--line-color');
+  x.globalAlpha = .35; x.lineWidth = 1;
+  x.beginPath();
+  for (let i = 1; i < gridSize; i++) {
+    x.moveTo(i * cell, 0); x.lineTo(i * cell, c.height);
+    x.moveTo(0, i * cell); x.lineTo(c.width, i * cell);
+  }
+  x.stroke(); x.globalAlpha = 1;
+  snake.forEach(([sx, sy], index) => {
+    x.fillStyle = index === 0 ? foreground : accent;
+    x.fillRect(sx * cell + 1, sy * cell + 1, cell - 2, cell - 2);
+  });
+  const headX = snake[0][0] * cell + cell / 2, headY = snake[0][1] * cell + cell / 2;
+  x.fillStyle = theme.getPropertyValue('--bg-color');
+  // Eyes keep the head and the current direction readable at phone size.
+  for (const side of [-1, 1]) x.fillRect(headX + dir[0] * 4 + dir[1] * side * 4 - 1, headY + dir[1] * 4 + dir[0] * side * 4 - 1, 3, 3);
+  if (food) {
+    const fx = food[0] * cell + cell / 2, fy = food[1] * cell + cell / 2;
+    x.fillStyle = '#ee795e';
+    x.beginPath(); x.arc(fx, fy + 2, 7, 0, Math.PI * 2); x.fill();
+    x.fillStyle = accent; x.fillRect(fx, fy - 9, 3, 5);
+  }
+  if (paused || result) {
+    x.fillStyle = theme.getPropertyValue('--surface-color');
+    x.fillRect(35, 164, 330, 72);
+    x.fillStyle = foreground; x.textAlign = 'center'; x.font = 'bold 20px monospace';
+    x.fillText(paused ? 'PAUSED' : result, c.width / 2, 207);
+  }
 }
-document.addEventListener('keydown',e=>{
- if(e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight'){
-  e.preventDefault();
- }
- if(e.key==='ArrowUp'&&dir[1]!==1)nextDir=[0,-1];
- if(e.key==='ArrowDown'&&dir[1]!==-1)nextDir=[0,1];
- if(e.key==='ArrowLeft'&&dir[0]!==1)nextDir=[-1,0];
- if(e.key==='ArrowRight'&&dir[0]!==-1)nextDir=[1,0];
+function stopFrame() {
+  if (frame !== null) cancelAnimationFrame(frame);
+  frame = null; previous = null;
+}
+function endGame(won = false) {
+  running = false; paused = false; swipe = null;
+  stopFrame();
+  result = won ? 'BOARD COMPLETE!' : 'GAME OVER';
+  statusText.textContent = (won ? 'You filled the whole board!' : 'Game over!') + ' Score: ' + (snake.length - 3) + ' · Time: ' + Math.floor(elapsed) + 's. Play again?';
+  startBtn.textContent = 'Play again';
+  pauseBtn.disabled = true; pauseBtn.textContent = 'Pause';
+  draw();
+}
+function step() {
+  if (!running || paused) return;
+  dir = nextDir;
+  turnQueued = false;
+  const head = [snake[0][0] + dir[0], snake[0][1] + dir[1]];
+  const eating = food && head[0] === food[0] && head[1] === food[1];
+  // The tail vacates its square on a normal move, so that square is safe.
+  const body = eating ? snake : snake.slice(0, -1);
+  if (head[0] < 0 || head[0] >= gridSize || head[1] < 0 || head[1] >= gridSize || body.some(([sx, sy]) => sx === head[0] && sy === head[1])) {
+    endGame(); return;
+  }
+  snake.unshift(head);
+  if (!eating) snake.pop();
+  scoreText.textContent = String(snake.length - 3);
+  if (eating && !placeFood()) { endGame(true); return; }
+  draw();
+}
+function update(now) {
+  frame = null;
+  if (!running || paused) return;
+  const dt = previous === null ? 0 : Math.min((now - previous) / 1000, .1);
+  previous = now;
+  elapsed += dt; accumulator += dt;
+  timeText.textContent = String(Math.floor(elapsed));
+  while (accumulator >= stepSeconds && running) { accumulator -= stepSeconds; step(); }
+  if (running && !paused) frame = requestAnimationFrame(update);
+}
+function changeDirection(name) {
+  if (!running || paused || turnQueued || !directions[name]) return;
+  const next = directions[name];
+  if ((next[0] === -dir[0] && next[1] === -dir[1]) || (next[0] === dir[0] && next[1] === dir[1])) return;
+  nextDir = next;
+  turnQueued = true;
+}
+function setPaused(value) {
+  if (!running || paused === value) return;
+  paused = value; swipe = null;
+  stopFrame();
+  pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+  statusText.textContent = paused ? 'Paused. Select Resume when you are ready.' : 'Eat fruit. Avoid the walls and your tail.';
+  draw();
+  if (!paused) frame = requestAnimationFrame(update);
+}
+function startGame() {
+  stopFrame(); init();
+  running = true; paused = false;
+  startBtn.textContent = 'Restart game';
+  pauseBtn.disabled = false; pauseBtn.textContent = 'Pause';
+  statusText.textContent = 'Eat fruit. Avoid the walls and your tail.';
+  c.focus({preventScroll: true}); draw();
+  frame = requestAnimationFrame(update);
+}
+document.addEventListener('keydown', event => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+  if (event.code === 'KeyP' && running && !event.repeat) { event.preventDefault(); setPaused(!paused); return; }
+  if (!running || paused || !keyDirections[event.code]) return;
+  event.preventDefault(); changeDirection(keyDirections[event.code]);
 });
-function tick(){if(running){time++;document.getElementById('time').textContent=time;}}
-function endGame(){running=false;clearInterval(loop);clearInterval(timer);alert('Game Over! Time: '+time+'s | Score: '+snake.length);startBtn.style.display='block';c.style.display='none';}
-startBtn.addEventListener('click',()=>{startBtn.style.display='none';c.style.display='block';init();running=true;loop=setInterval(step,200);timer=setInterval(tick,1000);});
+document.querySelectorAll('[data-direction]').forEach(button => {
+  button.addEventListener('click', () => { changeDirection(button.dataset.direction); if (running) c.focus({preventScroll: true}); });
+});
+c.addEventListener('pointerdown', event => {
+  if (!running || paused || swipe || event.button !== 0) return;
+  event.preventDefault(); c.focus({preventScroll: true});
+  swipe = {id: event.pointerId, x: event.clientX, y: event.clientY};
+  c.setPointerCapture(event.pointerId);
+});
+c.addEventListener('pointermove', event => {
+  if (!swipe || swipe.id !== event.pointerId || !running || paused) return;
+  const dx = event.clientX - swipe.x, dy = event.clientY - swipe.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 14) return;
+  event.preventDefault();
+  changeDirection(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down'));
+  swipe.x = event.clientX; swipe.y = event.clientY;
+});
+for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) c.addEventListener(name, event => { if (swipe && swipe.id === event.pointerId) swipe = null; });
+window.addEventListener('blur', () => setPaused(true));
+document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
+startBtn.addEventListener('click', startGame);
+pauseBtn.addEventListener('click', () => { setPaused(!paused); if (!paused) c.focus({preventScroll: true}); });
+new MutationObserver(draw).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+init(); draw();
 </script>
 </body>
 </html>

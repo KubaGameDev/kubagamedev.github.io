@@ -1,0 +1,62 @@
+/* Arcade-only styles: retain the studio site's colours and typography. */
+.arcade-game { max-width: 900px; text-align: center; }
+.arcade-game p { margin-left: auto; margin-right: auto; }
+main.arcade-game:has(canvas#game) { overflow-x: visible; }
+.arcade-game canvas#game {
+  max-width: 100%;
+  height: auto;
+  margin: 1.25rem auto;
+  border: 2px solid var(--line-color);
+  border-radius: 8px;
+  touch-action: none;
+  user-select: none;
+}
+.game-toolbar, .game-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: .75rem;
+  margin: 1rem auto;
+}
+.game-toolbar #start-btn { display: inline-flex; margin: 0; }
+.game-toolbar button, .game-controls button, .game-toolbar select {
+  min-width: 48px;
+  min-height: 48px;
+  padding: .65rem 1rem;
+  border: 1px solid var(--line-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-color);
+  font: inherit;
+  cursor: pointer;
+}
+.game-toolbar button:hover, .game-controls button:hover { border-color: var(--accent-color); }
+.game-toolbar button:disabled, .game-controls button:disabled { opacity: .5; cursor: default; }
+.game-toolbar label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.game-controls button { touch-action: manipulation; }
+.game-status { min-height: 1.7em; color: var(--accent-color); font-weight: 600; }
+.arcade-game .game-help { color: var(--muted-color); }
+.arcade-game [hidden] { display: none !important; }
+.arcade-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+.arcade-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  text-decoration: none;
+}
+.arcade-card:hover { border-color: var(--accent-color); }
+.arcade-card img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; background: #101211; }
+.arcade-card-copy { padding: 1.25rem; }
+.arcade-card h2 { margin: 0 0 .5rem; }
+.arcade-card p { margin: 0 0 1rem; color: var(--muted-color); }
+.arcade-card .play-link { color: var(--accent-color); font-weight: 650; }
+.arcade-intro { margin-bottom: 2rem; color: var(--muted-color); }
+@media (max-width: 600px) {
+  .arcade-grid { grid-template-columns: 1fr; }
+  .arcade-game { padding-left: 1rem; padding-right: 1rem; }
+  .game-toolbar, .game-controls { gap: .5rem; }
+}
